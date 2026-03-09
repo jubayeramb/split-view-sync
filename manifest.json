@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Split View Sync Scroller",
+  "version": "1.0.0",
+  "description": "Synchronizes scrolling between two tabs in Chrome's Split View. Uses proportional (percentage-based) scrolling so pages of different lengths stay in sync.",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Split View Sync Scroller"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
