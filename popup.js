@@ -126,9 +126,41 @@ async function injectContentScript(tabId) {
   }
 }
 
-// ── Init: detect panes as soon as popup opens ──────────────────────────
+// ── Init: restore state or detect panes ──────────────────────────────────
 
 (async function init() {
+  // ── First check if we're already syncing (popup may have been closed) ──
+  try {
+    const state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
+
+    if (state && state.syncing && state.tabIds.length === 2) {
+      // Restore UI from persisted background state
+      pairedTabs.left  = state.tabIds[0];
+      pairedTabs.right = state.tabIds[1];
+
+      // Fetch tab details for display
+      const [leftTab, rightTab] = await Promise.all([
+        chrome.tabs.get(pairedTabs.left).catch(() => null),
+        chrome.tabs.get(pairedTabs.right).catch(() => null),
+      ]);
+
+      DOM.tabLeft.textContent  = truncate(leftTab?.title, 42);
+      DOM.tabLeft.title        = leftTab?.url || "";
+      DOM.tabRight.textContent = truncate(rightTab?.title, 42);
+      DOM.tabRight.title       = rightTab?.url || "";
+
+      isSynced = true;
+      DOM.btnSync.textContent = "Stop Syncing";
+      DOM.btnSync.classList.add("active");
+      DOM.btnSync.disabled = false;
+      setStatus("Synced — scroll either pane!", "success");
+      return;
+    }
+  } catch (_) {
+    // Background not ready — fall through to detection
+  }
+
+  // ── Not currently syncing — detect panes ───────────────────────────────
   const { active, adjacent } = await detectPanes();
 
   if (!active) {
@@ -138,7 +170,6 @@ async function injectContentScript(tabId) {
     return;
   }
 
-  // Populate left pane (active tab)
   DOM.tabLeft.textContent = truncate(active.title, 42);
   DOM.tabLeft.title       = active.url || "";
 
@@ -150,7 +181,6 @@ async function injectContentScript(tabId) {
     return;
   }
 
-  // Populate right pane (adjacent tab)
   DOM.tabRight.textContent = truncate(adjacent.title, 42);
   DOM.tabRight.title       = adjacent.url || "";
 

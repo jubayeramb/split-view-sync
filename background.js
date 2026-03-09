@@ -1,8 +1,12 @@
 /**
  * Split View Sync Scroller — Background Service Worker
  *
- * Central message router that stores the two synced tab IDs and forwards
- * scroll-percentage updates from one tab to the other.
+ * Central message router.  Uses two communication channels:
+ *  • chrome.runtime.onMessage   — low-frequency control (START/STOP/GET_STATE)
+ *  • chrome.runtime.onConnect   — high-frequency scroll data via persistent ports
+ *
+ * Persistent ports eliminate per-message connection overhead, giving
+ * noticeably smoother sync than one-shot sendMessage.
  */
 
 "use strict";
@@ -10,53 +14,20 @@
 /** @type {number[]} IDs of the two tabs currently being synced */
 let syncedTabs = [];
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+/** @type {Record<number, chrome.runtime.Port>} tabId → open port */
+const tabPorts = {};
+
+// ── Control messages (popup ↔ background) ───────────────────────────────
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
-    // ── Popup tells us which two tabs to sync ──────────────────────────
     case "START_SYNC": {
-      syncedTabs = message.tabIds;                       // [tabA, tabB]
+      syncedTabs = message.tabIds;
       console.log("[SyncScroller] Syncing tabs:", syncedTabs);
       sendResponse({ status: "ok" });
       break;
     }
 
-    // ── A content script reports its current scroll % ──────────────────
-    case "SCROLL_UPDATE": {
-      if (syncedTabs.length !== 2 || sender.tab == null) {
-        console.log("[SyncScroller] SCROLL_UPDATE ignored — syncedTabs:",
-          syncedTabs.length, "sender.tab:", !!sender.tab);
-        sendResponse({ status: "ignored" });
-        break;
-      }
-
-      const senderTabId = sender.tab.id;
-      const targetTabId = syncedTabs[0] === senderTabId
-        ? syncedTabs[1]
-        : syncedTabs[1] === senderTabId
-          ? syncedTabs[0]
-          : null;
-
-      if (targetTabId === null) {
-        console.warn("[SyncScroller] Sender", senderTabId,
-          "not in syncedTabs", syncedTabs);
-        sendResponse({ status: "sender_not_synced" });
-        break;
-      }
-
-      // Forward the scroll percentage to the OTHER tab
-      chrome.tabs.sendMessage(targetTabId, {
-        type: "DO_SCROLL",
-        percent: message.percent,
-      }).catch((err) => {
-        console.warn("[SyncScroller] Could not reach target tab",
-          targetTabId, ":", err.message);
-      });
-
-      sendResponse({ status: "forwarded" });
-      break;
-    }
-
-    // ── Popup (or elsewhere) asks us to stop syncing ───────────────────
     case "STOP_SYNC": {
       console.log("[SyncScroller] Stopping sync for tabs:", syncedTabs);
       syncedTabs = [];
@@ -64,16 +35,66 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
     }
 
+    // Popup asks for current state so it can restore its UI
+    case "GET_STATE": {
+      sendResponse({
+        syncing: syncedTabs.length === 2,
+        tabIds: [...syncedTabs],
+      });
+      break;
+    }
+
     default:
       sendResponse({ status: "unknown_message" });
   }
-
-  // Return true only if we plan to call sendResponse asynchronously.
-  // All branches above are synchronous, so we return false (implicitly).
 });
 
-// Clean up if either synced tab is closed
+// ── High-frequency scroll relay (content script ↔ background) ───────────
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "scroll-sync") return;
+
+  const tabId = port.sender?.tab?.id;
+  if (tabId == null) return;
+
+  // Store the port so we can forward messages TO this tab
+  tabPorts[tabId] = port;
+
+  port.onMessage.addListener((msg) => {
+    if (msg.type !== "SCROLL_UPDATE") return;
+    if (syncedTabs.length !== 2) return;
+
+    const targetTabId =
+      syncedTabs[0] === tabId ? syncedTabs[1] :
+      syncedTabs[1] === tabId ? syncedTabs[0] :
+      null;
+
+    if (targetTabId == null) return;
+
+    const targetPort = tabPorts[targetTabId];
+    if (!targetPort) return;
+
+    // Forward directly — no serialisation overhead of sendMessage
+    try {
+      targetPort.postMessage({
+        type: "DO_SCROLL",
+        percent: msg.percent,
+      });
+    } catch (_) {
+      // Target port died — clean up
+      delete tabPorts[targetTabId];
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    delete tabPorts[tabId];
+  });
+});
+
+// ── Clean up if either synced tab is closed ─────────────────────────────
+
 chrome.tabs.onRemoved.addListener((tabId) => {
+  delete tabPorts[tabId];
   if (syncedTabs.includes(tabId)) {
     console.log("[SyncScroller] Synced tab closed:", tabId);
     syncedTabs = [];
