@@ -5,6 +5,9 @@
  * (Chrome 145+), injects the content script into both, and tells the
  * background service worker to start relaying scroll events.
  * Falls back to index ± 1 adjacency when splitViewId is unavailable.
+ *
+ * For canvas-dominated pages (Figma, Miro, Excalidraw), also injects
+ * content-main.js in the MAIN world for synthetic wheel event dispatch.
  */
 
 "use strict";
@@ -22,6 +25,13 @@ let isSynced = false;
 /** Tab IDs for the two panes we're syncing. */
 let pairedTabs = { left: null, right: null };
 
+// ── Canvas URL patterns (pre-emptive MAIN world injection) ──────────────
+
+const CANVAS_URL_PATTERNS = [
+  /^https?:\/\/(www\.)?figma\.com\//,
+  /^https?:\/\/(www\.)?miro\.com\//,
+  /^https?:\/\/(www\.)?excalidraw\.com/,
+];
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function setStatus(text, type) {
@@ -126,6 +136,37 @@ async function injectContentScript(tabId) {
   }
 }
 
+/**
+ * Inject content-main.js into a tab in the MAIN world.
+ * Used for canvas-dominated pages that need synthetic wheel events.
+ */
+async function injectMainWorldScript(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content-main.js"],
+      world: "MAIN",
+      injectImmediately: true,
+    });
+    console.log("[SyncScroller] MAIN world injected into tab", tabId);
+    return true;
+  } catch (err) {
+    console.warn(
+      "[SyncScroller] MAIN world injection failed for tab",
+      tabId, err.message,
+    );
+    return false;
+  }
+}
+
+/**
+ * Check if a URL belongs to a known canvas-based application.
+ */
+function isCanvasUrl(url) {
+  if (!url) return false;
+  return CANVAS_URL_PATTERNS.some((re) => re.test(url));
+}
+
 // ── Init: restore state or detect panes ──────────────────────────────────
 
 (async function init() {
@@ -219,6 +260,19 @@ DOM.btnSync.addEventListener("click", async () => {
     );
     DOM.btnSync.disabled = false;
     return;
+  }
+
+  // Pre-emptively inject MAIN world script for known canvas URLs
+  const [leftTabInfo, rightTabInfo] = await Promise.all([
+    chrome.tabs.get(pairedTabs.left).catch(() => null),
+    chrome.tabs.get(pairedTabs.right).catch(() => null),
+  ]);
+
+  if (leftTabInfo && isCanvasUrl(leftTabInfo.url)) {
+    await injectMainWorldScript(pairedTabs.left);
+  }
+  if (rightTabInfo && isCanvasUrl(rightTabInfo.url)) {
+    await injectMainWorldScript(pairedTabs.right);
   }
 
   // Tell background which two tabs to relay between
