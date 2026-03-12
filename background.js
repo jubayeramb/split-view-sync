@@ -2,7 +2,8 @@
  * Split View Sync Scroller — Background Service Worker
  *
  * Central message router.  Uses two communication channels:
- *  • chrome.runtime.onMessage   — low-frequency control (START/STOP/GET_STATE)
+ *  • chrome.runtime.onMessage   — low-frequency control
+ *    (START/STOP/GET_STATE/REQUEST_MAIN_INJECT)
  *  • chrome.runtime.onConnect   — high-frequency scroll data via persistent ports
  *
  * Persistent ports eliminate per-message connection overhead, giving
@@ -44,6 +45,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
     }
 
+    // Content script requests MAIN world injection for canvas pages
+    case "REQUEST_MAIN_INJECT": {
+      const tabId = _sender.tab?.id;
+      if (tabId == null) { sendResponse({ status: "no_tab" }); break; }
+      chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content-main.js"],
+        world: "MAIN",
+        injectImmediately: true,
+      }).then(() => {
+        sendResponse({ status: "ok" });
+      }).catch((_) => {
+        sendResponse({ status: "failed" });
+      });
+      return true;  // Keep channel open for async response
+    }
+
     default:
       sendResponse({ status: "unknown_message" });
   }
@@ -61,7 +79,7 @@ chrome.runtime.onConnect.addListener((port) => {
   tabPorts[tabId] = port;
 
   port.onMessage.addListener((msg) => {
-    if (msg.type !== "SCROLL_UPDATE") return;
+    if (msg.type !== "SCROLL_UPDATE" && msg.type !== "WHEEL_RELAY") return;
     if (syncedTabs.length !== 2) return;
 
     const targetTabId =
@@ -76,10 +94,21 @@ chrome.runtime.onConnect.addListener((port) => {
 
     // Forward directly — no serialisation overhead of sendMessage
     try {
-      targetPort.postMessage({
-        type: "DO_SCROLL",
-        percent: msg.percent,
-      });
+      if (msg.type === "SCROLL_UPDATE") {
+        targetPort.postMessage({
+          type: "DO_SCROLL",
+          percent: msg.percent,
+        });
+      } else if (msg.type === "WHEEL_RELAY") {
+        targetPort.postMessage({
+          type: "DO_WHEEL",
+          deltaX: msg.deltaX,
+          deltaY: msg.deltaY,
+          deltaMode: msg.deltaMode,
+          ctrlKey: msg.ctrlKey,
+          shiftKey: msg.shiftKey,
+        });
+      }
     } catch (_) {
       // Target port died — clean up
       delete tabPorts[targetTabId];

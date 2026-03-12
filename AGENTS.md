@@ -59,3 +59,73 @@ Requires `"tabs"`, `"scripting"`, and `"activeTab"`. Host permissions should be 
 
 - **Dynamic Page Loading:** If a page utilizes infinite scroll or dynamically loads content (changing `document.body.scrollHeight`), the percentage calculation will naturally adjust, but ensure the content script calculates the height dynamically on every scroll event, not just on load.
 - **Missing Adjacent Tab:** The popup logic must gracefully handle the scenario where there is no adjacent tab to pair with and show an error in the popup UI.
+
+---
+
+## 7. Build, Lint & Test Commands
+
+This is a **zero-build** Chrome Extension. No bundler, transpiler, or package manager.
+
+| Action | Command |
+|---|---|
+| Load into Chrome | `chrome://extensions` → Enable Developer Mode → "Load unpacked" → select project root |
+| Reload after changes | Click the refresh icon on the extension card, or Ctrl+R on `chrome://extensions` |
+| View service worker logs | Click "service worker" link on the extension card in `chrome://extensions` |
+| View popup logs | Right-click the extension icon → "Inspect Popup" |
+| View content script logs | Open DevTools on the target page → Console (filter by extension name) |
+
+**There is no `package.json`, no linter config, no test framework, and no build step.** All `.js` files are loaded raw by Chrome. Do not introduce build tools unless explicitly requested.
+
+## 8. Code Style Guidelines
+
+### File Structure
+- Every JS file starts with `"use strict";`
+- File-level JSDoc block comment describing purpose and architecture
+- Section dividers: `// ── Section Name ──────────────────────` (em-dash style)
+
+### Formatting
+- **2-space indentation** (spaces, not tabs)
+- **Double quotes** for all strings — never single quotes
+- **Semicolons** required on every statement
+- **Trailing commas** in multi-line objects/arrays/parameters
+- **Max line length**: ~80 chars soft limit (comments may exceed)
+- **Blank line** between logical sections; no consecutive blank lines
+
+### Naming Conventions
+- `camelCase` for variables and functions: `syncedTabs`, `detectPanes`, `getScrollRatio`
+- `UPPER_SNAKE_CASE` for constants: `GRACE_MS`, `MIN_DELTA`
+- Message type strings are `UPPER_SNAKE_CASE`: `"START_SYNC"`, `"SCROLL_UPDATE"`, `"DO_SCROLL"`, `"GET_STATE"`, `"STOP_SYNC"`
+- DOM element cache objects named `DOM`: `DOM.btnSync`, `DOM.status`
+- Console log prefix: `"[SyncScroller]"` for all debug output
+
+### JavaScript Patterns
+- **Vanilla JS only** — no frameworks, no TypeScript, no modules
+- **Async/await** for all Chrome API calls (never raw `.then()` chains)
+- **IIFE** wrapping for content scripts to avoid global pollution: `(() => { ... })()`
+- **`document.documentElement`** for scroll measurements (not `document.body`)
+- **Loose null checks** with `== null` to catch both `null` and `undefined`
+- **Underscore `_`** for intentionally unused parameters: `catch (_) {}`, `(_sender, ...)`
+- **Guard clauses** (early return) over deeply nested if/else
+- **`{ passive: true }`** on scroll event listeners
+
+### Error Handling
+- `try/catch` with underscore for unused error: `catch (_) { ... }`
+- Graceful degradation — never throw or crash; fall through to fallback behavior
+- Injection failures return `false`; callers check and show user-facing error
+- Port disconnection triggers cleanup via `onDisconnect` listener
+- Always clean up resources (event listeners, rAF handles, ports) in teardown functions
+
+### CSS
+- All styles inline in `popup.html` within a `<style>` tag — no external CSS files
+- Dark theme palette: `#1a1a2e` background, `#e0e0e0` text, `#533483` primary, `#e94560` danger
+- System font stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ...`
+- `box-sizing: border-box` via universal reset
+- Status colors: `.success` = `#2ecc71`, `.error` = `#e94560`, `.info` = `#8888aa`
+
+### Chrome Extension Conventions
+- **Manifest V3 only** — service workers, not background pages
+- Communication: `chrome.runtime.onMessage` for low-frequency control; `chrome.runtime.connect` (persistent ports) for high-frequency scroll data
+- Content script cleanup: expose `window.__splitViewSyncCleanup` for re-injection cycles
+- Tab detection: 3-tier strategy — `splitViewId` → `highlighted` tabs → index ± 1 adjacency
+- Popup state restoration: query background via `GET_STATE` on popup open
+- **Never** use `chrome.storage` for transient sync state — keep it in service worker memory
