@@ -171,6 +171,11 @@
     scrollContainer = container;
     console.log("[SyncScroller] Scroll mode:", mode);
 
+    // Notify background of our mode (for cross-mode routing)
+    try {
+      if (port) port.postMessage({ type: "SET_MODE", mode });
+    } catch (_) {}
+
     if (mode === "container" && container) {
       container.addEventListener("scroll", onScroll, { passive: true });
     }
@@ -296,26 +301,24 @@
       }
     }
 
-    // Canvas mode: relay wheel deltas to the other tab
-    if (scrollMode === "canvas") {
-      if (Math.abs(e.deltaX) < WHEEL_MIN_DELTA
-          && Math.abs(e.deltaY) < WHEEL_MIN_DELTA) return;
-      if (Date.now() - lastProgrammaticScrollTime < GRACE_MS) return;
+    // Relay wheel deltas to the other tab (all modes)
+    if (Math.abs(e.deltaX) < WHEEL_MIN_DELTA
+        && Math.abs(e.deltaY) < WHEEL_MIN_DELTA) return;
+    if (Date.now() - lastProgrammaticScrollTime < GRACE_MS) return;
 
-      if (!isContextAlive() || !port) return;
+    if (!isContextAlive() || !port) return;
 
-      try {
-        port.postMessage({
-          type: "WHEEL_RELAY",
-          deltaX: e.deltaX,
-          deltaY: e.deltaY,
-          deltaMode: e.deltaMode,
-          ctrlKey: e.ctrlKey,
-          shiftKey: e.shiftKey,
-        });
-      } catch (_) {
-        teardown();
-      }
+    try {
+      port.postMessage({
+        type: "WHEEL_RELAY",
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        deltaMode: e.deltaMode,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+      });
+    } catch (_) {
+      teardown();
     }
   }
 
