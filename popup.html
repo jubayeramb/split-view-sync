@@ -124,6 +124,38 @@
     #status.info {
       color: #8888aa;
     }
+
+    .author {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #0f3460;
+      text-align: center;
+      font-size: 10px;
+      color: #6a6a88;
+      letter-spacing: 0.2px;
+    }
+
+    .author a {
+      color: #8888aa;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .author a:hover {
+      color: #c4c4dd;
+    }
+
+    .author-mail {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: -1px;
+    }
+
+    .author-mail svg {
+      width: 11px;
+      height: 11px;
+    }
   </style>
 </head>
 <body>
@@ -143,6 +175,15 @@
   <button id="btn-sync" disabled>Sync Split Panes</button>
 
   <div id="status" class="info">Scanning open tabs…</div>
+
+  <div class="author">
+    by <a href="https://jubayeramb.com" target="_blank" rel="noopener">Jubayer Al Mamun</a><a class="author-mail" href="mailto:jubayeramb@gmail.com" aria-label="Email Jubayer Al Mamun">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/>
+        <path d="m3 7 9 6 9-6"/>
+      </svg>
+    </a>
+  </div>
 
   <script src="popup.js"></script>
 </body>
