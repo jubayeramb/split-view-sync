@@ -22,46 +22,72 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://syncroll.jubayeramb.com/">
   <meta property="og:site_name" content="Syncroll">
-  <meta property="og:image" content="https://syncroll.jubayeramb.com/icon.png">
-  <meta property="og:image:width" content="128">
-  <meta property="og:image:height" content="128">
-  <meta property="og:image:alt" content="Syncroll logo">
+  <meta property="og:image" content="https://syncroll.jubayeramb.com/video-poster.jpeg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="720">
+  <meta property="og:image:alt" content="Syncroll — Scroll two tabs together in Chrome's Split View">
   <meta property="og:locale" content="en_US">
+  <meta property="og:video" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
+  <meta property="og:video:url" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
+  <meta property="og:video:secure_url" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
+  <meta property="og:video:type" content="text/html">
+  <meta property="og:video:width" content="1280">
+  <meta property="og:video:height" content="720">
 
   <!-- Twitter -->
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Syncroll: Split View Sync Scroller">
   <meta name="twitter:description" content="Open two pages side-by-side and scroll them together. Works on websites, ChatGPT, Figma, and more.">
-  <meta name="twitter:image" content="https://syncroll.jubayeramb.com/icon.png">
-  <meta name="twitter:image:alt" content="Syncroll logo">
+  <meta name="twitter:image" content="https://syncroll.jubayeramb.com/video-poster.jpeg">
+  <meta name="twitter:image:alt" content="Syncroll — Scroll two tabs together in Chrome's Split View">
+  <meta name="twitter:player" content="https://www.youtube.com/embed/vv8RfyK7W4g">
+  <meta name="twitter:player:width" content="1280">
+  <meta name="twitter:player:height" content="720">
 
-  <!-- Structured data (Schema.org SoftwareApplication) -->
+  <!-- Structured data (Schema.org SoftwareApplication + VideoObject) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Syncroll: Split View Sync Scroller",
-    "alternateName": "Syncroll",
-    "description": "A Chrome extension that synchronizes scrolling between two tabs in Chrome's Split View. Works on standard websites, chat UIs like ChatGPT and Gemini, and canvas apps like Figma, Miro, and Excalidraw.",
-    "applicationCategory": "BrowserApplication",
-    "browserRequirements": "Requires Chrome 145 or later",
-    "url": "https://syncroll.jubayeramb.com/",
-    "image": "https://syncroll.jubayeramb.com/icon.png",
-    "softwareVersion": "1.0.0",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "author": {
-      "@type": "Person",
-      "name": "Jubayer Al Mamun",
-      "url": "https://github.com/jubayeramb"
-    },
-    "publisher": {
-      "@type": "Person",
-      "name": "Jubayer Al Mamun"
-    }
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://syncroll.jubayeramb.com/#software",
+        "name": "Syncroll: Split View Sync Scroller",
+        "alternateName": "Syncroll",
+        "description": "A Chrome extension that synchronizes scrolling between two tabs in Chrome's Split View. Works on standard websites, chat UIs like ChatGPT and Gemini, and canvas apps like Figma, Miro, and Excalidraw.",
+        "applicationCategory": "BrowserApplication",
+        "browserRequirements": "Requires Chrome 145 or later",
+        "url": "https://syncroll.jubayeramb.com/",
+        "image": "https://syncroll.jubayeramb.com/video-poster.jpeg",
+        "softwareVersion": "1.0.0",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Jubayer Al Mamun",
+          "url": "https://github.com/jubayeramb"
+        },
+        "publisher": {
+          "@type": "Person",
+          "name": "Jubayer Al Mamun"
+        },
+        "subjectOf": { "@id": "https://syncroll.jubayeramb.com/#video" }
+      },
+      {
+        "@type": "VideoObject",
+        "@id": "https://syncroll.jubayeramb.com/#video",
+        "name": "Syncroll demo — Scroll two tabs together in Chrome's Split View",
+        "description": "30-second walkthrough showing Syncroll syncing scroll position across two Chrome Split View panes — for websites, ChatGPT conversations, and Figma canvases.",
+        "thumbnailUrl": "https://syncroll.jubayeramb.com/video-poster.jpeg",
+        "uploadDate": "2026-05-08",
+        "duration": "PT30S",
+        "contentUrl": "https://www.youtube.com/watch?v=vv8RfyK7W4g",
+        "embedUrl": "https://www.youtube-nocookie.com/embed/vv8RfyK7W4g"
+      }
+    ]
   }
   </script>
 
@@ -77,6 +103,26 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: absolute;
+      top: -240px;
+      left: 50%;
+      width: 1200px;
+      max-width: 140vw;
+      height: 700px;
+      transform: translateX(-50%);
+      background: radial-gradient(
+        ellipse at 50% 50%,
+        rgba(139, 104, 255, 0.22) 0%,
+        rgba(139, 104, 255, 0.06) 35%,
+        transparent 60%
+      );
+      pointer-events: none;
+      z-index: -1;
     }
     a { color: #c4c4dd; text-decoration: none; }
     a:hover { color: #ffffff; }
@@ -89,11 +135,15 @@
       width: 100%;
     }
 
-    .hero { text-align: center; margin-bottom: 56px; }
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
     .hero img {
       width: 72px; height: 72px;
       border-radius: 16px;
       margin-bottom: 20px;
+      filter: drop-shadow(0 12px 32px rgba(139, 104, 255, 0.4));
     }
     .hero h1 {
       font-size: 40px;
@@ -140,14 +190,23 @@
 
     .features {
       display: grid;
-      gap: 12px;
+      gap: 14px;
     }
     .feature {
       background: #16213e;
       border: 1px solid #0f3460;
       border-radius: 12px;
-      padding: 18px 20px;
+      overflow: hidden;
     }
+    .feature img {
+      display: block;
+      width: 100%;
+      height: 168px;
+      object-fit: cover;
+      object-position: center 65%;
+      border-bottom: 1px solid #0f3460;
+    }
+    .feature-body { padding: 16px 20px 18px; }
     .feature h3 {
       font-size: 15px;
       font-weight: 600;
@@ -158,6 +217,61 @@
       font-size: 14px;
       color: #c4c4dd;
       margin: 0;
+    }
+
+    /* ── Video facade (lite YouTube embed) ─────────────────────────── */
+    .video-section { margin-bottom: 56px; }
+    .video-frame {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0f1020;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5),
+                  0 0 0 1px #0f3460;
+    }
+    .video-frame iframe { width: 100%; height: 100%; border: 0; }
+    .video-play {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      display: block;
+    }
+    .video-play img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease, filter 0.2s ease;
+    }
+    .video-play:hover img,
+    .video-play:focus-visible img {
+      transform: scale(1.02);
+      filter: brightness(1.05);
+    }
+    .video-play:focus-visible {
+      outline: 3px solid #8B68FF;
+      outline-offset: 4px;
+    }
+    .play-icon {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+      transition: transform 0.2s ease;
+    }
+    .video-play:hover .play-icon { transform: translate(-50%, -50%) scale(1.06); }
+    .video-meta {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #8888aa;
+      text-align: center;
+      letter-spacing: 0.2px;
     }
 
     ol.steps {
@@ -240,20 +354,44 @@
       </div>
     </div>
 
+    <section class="video-section" aria-label="Demo video">
+      <div class="video-frame" id="videoFrame">
+        <button type="button" class="video-play" id="videoPlay" aria-label="Play Syncroll demo (30 seconds)">
+          <img src="video-poster.jpeg" alt="Syncroll demo: scroll two tabs together in Chrome's Split View" width="1280" height="720" loading="eager" decoding="async">
+          <span class="play-icon" aria-hidden="true">
+            <svg viewBox="0 0 68 48" width="80" height="56" xmlns="http://www.w3.org/2000/svg">
+              <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#ff0000"/>
+              <polygon points="45,24 27,14 27,34" fill="#ffffff"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+      <p class="video-meta">30-second walkthrough · plays in place</p>
+    </section>
+
     <section>
       <h2>Works everywhere</h2>
       <div class="features">
         <div class="feature">
-          <h3>Standard websites</h3>
-          <p>Wikipedia, MDN, news sites. Proportional sync keeps pages of different lengths aligned.</p>
+          <img src="feature-websites.jpeg" alt="Two browser windows showing articles scrolled to the same position" width="1280" height="800" loading="lazy" decoding="async">
+          <div class="feature-body">
+            <h3>Standard websites</h3>
+            <p>Wikipedia, MDN, news sites. Proportional sync keeps pages of different lengths aligned.</p>
+          </div>
         </div>
         <div class="feature">
-          <h3>Chat UIs</h3>
-          <p>ChatGPT, Gemini, Slack. Detects the inner scroll container automatically.</p>
+          <img src="feature-chat.jpeg" alt="Two ChatGPT conversations scrolled in sync — sidebars stay put" width="1280" height="800" loading="lazy" decoding="async">
+          <div class="feature-body">
+            <h3>Chat UIs</h3>
+            <p>ChatGPT, Gemini, Slack. Detects the inner scroll container — sidebar stays put, only the conversation scrolls.</p>
+          </div>
         </div>
         <div class="feature">
-          <h3>Canvas apps</h3>
-          <p>Figma, Miro, Excalidraw. Wheel events relayed across panes for true side-by-side panning.</p>
+          <img src="feature-canvas.jpeg" alt="Two Figma canvases panning in sync — toolbar and layers stay anchored" width="1280" height="800" loading="lazy" decoding="async">
+          <div class="feature-body">
+            <h3>Canvas apps</h3>
+            <p>Figma, Miro, Excalidraw. Wheel events relayed across panes for true side-by-side panning.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -277,5 +415,23 @@
   <footer>
     <a href="https://github.com/jubayeramb/split-view-sync">GitHub</a> · Requires Chrome 145+
   </footer>
+
+  <script>
+    // Lite YouTube embed: load the iframe only when the user clicks Play.
+    // Uses youtube-nocookie.com to keep with the page's privacy promise.
+    (function () {
+      var btn = document.getElementById("videoPlay");
+      var frame = document.getElementById("videoFrame");
+      if (!btn || !frame) return;
+      btn.addEventListener("click", function () {
+        var iframe = document.createElement("iframe");
+        iframe.src = "https://www.youtube-nocookie.com/embed/vv8RfyK7W4g?autoplay=1&rel=0&modestbranding=1";
+        iframe.title = "Syncroll demo";
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        frame.replaceChildren(iframe);
+      }, { once: true });
+    })();
+  </script>
 </body>
 </html>
