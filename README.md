@@ -1,6 +1,8 @@
-# Split View Sync Scroller
+# Syncroll: Split View Sync Scroller
 
 A Chrome extension that synchronizes scrolling between two tabs in Chrome's native Split View. Open two pages side-by-side, click sync, and they scroll together.
+
+Landing page: [https://jubayeramb.github.io/split-view-sync/](https://jubayeramb.github.io/split-view-sync/)
 
 ## What it does
 
@@ -80,10 +82,15 @@ split-view-sync/
 ├── content-main.js     Content script (MAIN) — canvas wheel capture/dispatch
 ├── popup.html          Extension popup UI (inline CSS, dark theme)
 ├── popup.js            Popup logic — pane detection, injection, sync toggle
-└── icons/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
+├── icons/
+│   ├── icon.svg          Source icon — re-render PNGs from this
+│   ├── icon16.png
+│   ├── icon48.png
+│   └── icon128.png
+└── docs/                 Landing page (GitHub Pages from /docs)
+    ├── index.html
+    ├── icon.svg
+    └── icon.png          Fallback for og:image
 ```
 
 ## Known limitations

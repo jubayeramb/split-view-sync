@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syncroll: Split View Sync Scroller — Sync scroll between Chrome tabs</title>
+  <meta name="description" content="Syncroll is a free Chrome extension that syncs scrolling between two tabs in Chrome's Split View. Works on websites, chat UIs (ChatGPT, Gemini), and canvas apps (Figma, Miro).">
+  <meta name="keywords" content="chrome extension, split view, scroll sync, side by side scrolling, sync scroll, chrome split view, figma sync, chatgpt side by side">
+  <meta name="author" content="Jubayer Al Mamun">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="color-scheme" content="dark">
+
+  <link rel="canonical" href="https://jubayeramb.github.io/split-view-sync/">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="alternate icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Syncroll: Split View Sync Scroller">
+  <meta property="og:description" content="Open two pages side-by-side and scroll them together. Works on websites, ChatGPT, Figma, and more.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jubayeramb.github.io/split-view-sync/">
+  <meta property="og:site_name" content="Syncroll">
+  <meta property="og:image" content="https://jubayeramb.github.io/split-view-sync/icon.png">
+  <meta property="og:image:width" content="128">
+  <meta property="og:image:height" content="128">
+  <meta property="og:image:alt" content="Syncroll logo">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Syncroll: Split View Sync Scroller">
+  <meta name="twitter:description" content="Open two pages side-by-side and scroll them together. Works on websites, ChatGPT, Figma, and more.">
+  <meta name="twitter:image" content="https://jubayeramb.github.io/split-view-sync/icon.png">
+  <meta name="twitter:image:alt" content="Syncroll logo">
+
+  <!-- Structured data (Schema.org SoftwareApplication) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Syncroll: Split View Sync Scroller",
+    "alternateName": "Syncroll",
+    "description": "A Chrome extension that synchronizes scrolling between two tabs in Chrome's Split View. Works on standard websites, chat UIs like ChatGPT and Gemini, and canvas apps like Figma, Miro, and Excalidraw.",
+    "applicationCategory": "BrowserApplication",
+    "browserRequirements": "Requires Chrome 145 or later",
+    "url": "https://jubayeramb.github.io/split-view-sync/",
+    "image": "https://jubayeramb.github.io/split-view-sync/icon.png",
+    "softwareVersion": "1.0.0",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Jubayer Al Mamun",
+      "url": "https://github.com/jubayeramb"
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "Jubayer Al Mamun"
+    }
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      line-height: 1.55;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: #c4c4dd; text-decoration: none; }
+    a:hover { color: #ffffff; }
+
+    main {
+      flex: 1;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 64px 24px 48px;
+      width: 100%;
+    }
+
+    .hero { text-align: center; margin-bottom: 56px; }
+    .hero img {
+      width: 72px; height: 72px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+      color: #ffffff;
+    }
+    .hero .tagline {
+      font-size: 17px;
+      color: #c4c4dd;
+      max-width: 460px;
+      margin: 0 auto 28px;
+    }
+    .cta {
+      display: inline-flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .btn.primary { background: #533483; color: #ffffff; }
+    .btn.primary:hover { background: #6b44a0; color: #ffffff; }
+    .btn.secondary { background: #16213e; color: #c4c4dd; border: 1px solid #0f3460; }
+    .btn.secondary:hover { background: #1d2a4d; color: #ffffff; }
+
+    section { margin-bottom: 48px; }
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #8888aa;
+      margin: 0 0 20px;
+    }
+
+    .features {
+      display: grid;
+      gap: 12px;
+    }
+    .feature {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .feature h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      color: #ffffff;
+    }
+    .feature p {
+      font-size: 14px;
+      color: #c4c4dd;
+      margin: 0;
+    }
+
+    ol.steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: step;
+    }
+    ol.steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 14px 0 14px 44px;
+      border-top: 1px solid #0f3460;
+      font-size: 14.5px;
+      color: #c4c4dd;
+    }
+    ol.steps li:first-child { border-top: none; }
+    ol.steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #533483;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    ol.steps strong { color: #ffffff; font-weight: 600; }
+    code {
+      background: #0f3460;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #ffffff;
+    }
+
+    .privacy {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 13.5px;
+      color: #c4c4dd;
+    }
+    .privacy strong { color: #ffffff; }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #8888aa;
+      border-top: 1px solid #0f3460;
+    }
+    footer a { color: #8888aa; }
+    footer a:hover { color: #c4c4dd; }
+
+    @media (max-width: 480px) {
+      main { padding: 40px 20px 32px; }
+      .hero h1 { font-size: 32px; }
+      .hero .tagline { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="hero">
+      <img src="icon.svg" alt="Syncroll logo" width="72" height="72">
+      <h1>Syncroll</h1>
+      <p class="tagline">Scroll two tabs together. A Chrome extension that syncs scroll position between Split View panes.</p>
+      <div class="cta">
+        <a href="#install" class="btn primary">Get Syncroll</a>
+        <a href="https://github.com/jubayeramb/split-view-sync" class="btn secondary">View on GitHub</a>
+      </div>
+    </div>
+
+    <section>
+      <h2>Works everywhere</h2>
+      <div class="features">
+        <div class="feature">
+          <h3>Standard websites</h3>
+          <p>Wikipedia, MDN, news sites. Proportional sync keeps pages of different lengths aligned.</p>
+        </div>
+        <div class="feature">
+          <h3>Chat UIs</h3>
+          <p>ChatGPT, Gemini, Slack. Detects the inner scroll container automatically.</p>
+        </div>
+        <div class="feature">
+          <h3>Canvas apps</h3>
+          <p>Figma, Miro, Excalidraw. Wheel events relayed across panes for true side-by-side panning.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Get started</h2>
+      <ol class="steps">
+        <li>Install from <a href="https://github.com/jubayeramb/split-view-sync">GitHub</a> as an unpacked extension. <em>Chrome Web Store listing coming soon.</em></li>
+        <li>Open two tabs in Chrome's Split View — right-click a tab and pick <strong>Split view</strong>, or drag a tab to the side.</li>
+        <li>Click the Syncroll icon and hit <strong>Sync Split Panes</strong>. Scroll either side; the other follows.</li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="privacy">
+        <strong>Private by default.</strong> No data collection, no tracking, no servers. All sync happens locally between your tabs through Chrome's built-in messaging.
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/jubayeramb/split-view-sync">GitHub</a> · Requires Chrome 145+
+  </footer>
+</body>
+</html>
