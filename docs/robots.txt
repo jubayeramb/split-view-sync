@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://jubayeramb.github.io/split-view-sync/sitemap.xml
+Sitemap: https://syncroll.jubayeramb.com/sitemap.xml

@@ -2,7 +2,7 @@
 
 A Chrome extension that synchronizes scrolling between two tabs in Chrome's native Split View. Open two pages side-by-side, click sync, and they scroll together.
 
-Landing page: [https://jubayeramb.github.io/split-view-sync/](https://jubayeramb.github.io/split-view-sync/)
+Landing page: [syncroll.jubayeramb.com](https://syncroll.jubayeramb.com/)
 
 ## What it does
 
