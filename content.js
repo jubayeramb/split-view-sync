@@ -1,5 +1,5 @@
 /**
- * Split View Sync Scroller — Content Script
+ * Syncroll — Content Script
  *
  * Injected dynamically into both synced tabs (ISOLATED world).
  *

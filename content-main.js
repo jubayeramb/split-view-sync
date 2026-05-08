@@ -1,5 +1,5 @@
 /**
- * Split View Sync Scroller — MAIN World Bridge
+ * Syncroll — MAIN World Bridge
  *
  * Injected into the page's MAIN world (not the extension's isolated world)
  * to intercept wheel events on <canvas> elements and dispatch synthetic

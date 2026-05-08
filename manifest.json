@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Split View Sync Scroller",
+  "name": "Syncroll: Split View Sync Scroller",
+  "short_name": "Syncroll",
   "version": "1.0.0",
-  "description": "Synchronizes scrolling between two tabs in Chrome's Split View. Uses proportional (percentage-based) scrolling so pages of different lengths stay in sync.",
+  "description": "Sync scroll between two tabs in Chrome's Split View. Works on websites, chat UIs, and canvas apps like Figma.",
+  "homepage_url": "https://jubayeramb.github.io/split-view-sync/",
+  "author": "Jubayer Al Mamun",
   "permissions": [
     "tabs",
     "scripting",
@@ -16,7 +19,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Split View Sync Scroller"
+    "default_title": "Syncroll"
   },
   "icons": {
     "16": "icons/icon16.png",

@@ -1,5 +1,5 @@
 /**
- * Split View Sync Scroller — Popup Script
+ * Syncroll — Popup Script
  *
  * Detects the two Split View panes using chrome.tabs.Tab.splitViewId
  * (Chrome 145+), injects the content script into both, and tells the

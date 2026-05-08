@@ -1,5 +1,5 @@
 /**
- * Split View Sync Scroller — Background Service Worker
+ * Syncroll — Background Service Worker
  *
  * Central message router.  Uses two communication channels:
  *  • chrome.runtime.onMessage   — low-frequency control

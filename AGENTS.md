@@ -1,4 +1,4 @@
-# Split View Sync Scroller - Agent Implementation Guide
+# Syncroll — Agent Implementation Guide
 
 ## 1. Project Objective
 
