@@ -45,7 +45,7 @@ function truncate(str, max) {
 }
 
 /**
- * Detect the two Split View panes.
+ * Detect the two Split View panes and return them in geometric order.
  *
  * Strategy:
  *  1. (Chrome 145+) Use `splitViewId` — the native Split View identifier.
@@ -54,7 +54,10 @@ function truncate(str, max) {
  *     highlighted in the tab strip.
  *  3. Last resort: index ± 1 adjacency heuristic.
  *
- * @returns {{ active: chrome.tabs.Tab, adjacent: chrome.tabs.Tab | null }}
+ * The returned `left`/`right` are sorted by `tab.index` — Chrome Split View
+ * places the visually-left pane at the lower index in the tab strip.
+ *
+ * @returns {{ left: chrome.tabs.Tab, right: chrome.tabs.Tab | null }}
  */
 async function detectPanes() {
   const [activeTab] = await chrome.tabs.query({
@@ -62,12 +65,14 @@ async function detectPanes() {
     currentWindow: true,
   });
 
-  if (!activeTab) return { active: null, adjacent: null };
+  if (!activeTab) return { left: null, right: null };
 
   console.log("[SyncScroller] Active tab:", activeTab.id,
     "splitViewId:", activeTab.splitViewId,
     "index:", activeTab.index,
     "title:", activeTab.title);
+
+  let peer = null;
 
   // ── Strategy 1: splitViewId (Chrome 145+) ───────────────────────────
   // Both tabs in a Split View share the same splitViewId.
@@ -80,44 +85,45 @@ async function detectPanes() {
     console.log("[SyncScroller] splitViewId", activeTab.splitViewId,
       "matched", splitTabs.length, "tabs");
 
-    const other = splitTabs.find((t) => t.id !== activeTab.id) || null;
-
-    if (other) {
-      console.log("[SyncScroller] Split View peer:", other.id, other.title);
-      return { active: activeTab, adjacent: other };
-    }
+    peer = splitTabs.find((t) => t.id !== activeTab.id) || null;
+    if (peer) console.log("[SyncScroller] Split View peer:", peer.id, peer.title);
   }
 
   // ── Strategy 2: highlighted tabs ─────────────────────────────────────
   // In Split View both visible tabs are highlighted in the tab strip.
-  const highlighted = await chrome.tabs.query({
-    highlighted: true,
-    windowId: activeTab.windowId,
-  });
+  if (!peer) {
+    const highlighted = await chrome.tabs.query({
+      highlighted: true,
+      windowId: activeTab.windowId,
+    });
 
-  console.log("[SyncScroller] Highlighted tabs:", highlighted.length,
-    highlighted.map((t) => `${t.id}:${t.title}`));
+    console.log("[SyncScroller] Highlighted tabs:", highlighted.length,
+      highlighted.map((t) => `${t.id}:${t.title}`));
 
-  if (highlighted.length === 2) {
-    const other = highlighted.find((t) => t.id !== activeTab.id) || null;
-    if (other) {
-      console.log("[SyncScroller] Highlighted peer:", other.id, other.title);
-      return { active: activeTab, adjacent: other };
+    if (highlighted.length === 2) {
+      peer = highlighted.find((t) => t.id !== activeTab.id) || null;
+      if (peer) console.log("[SyncScroller] Highlighted peer:", peer.id, peer.title);
     }
   }
 
   // ── Strategy 3: index ± 1 fallback ──────────────────────────────────
-  const allTabs = await chrome.tabs.query({ windowId: activeTab.windowId });
-  allTabs.sort((a, b) => a.index - b.index);
+  if (!peer) {
+    const allTabs = await chrome.tabs.query({ windowId: activeTab.windowId });
+    allTabs.sort((a, b) => a.index - b.index);
 
-  const right = allTabs.find((t) => t.index === activeTab.index + 1) || null;
-  const left  = allTabs.find((t) => t.index === activeTab.index - 1) || null;
-  const adjacent = right || left;
+    const after  = allTabs.find((t) => t.index === activeTab.index + 1) || null;
+    const before = allTabs.find((t) => t.index === activeTab.index - 1) || null;
+    peer = after || before;
 
-  console.log("[SyncScroller] Index fallback:",
-    adjacent ? `${adjacent.id}:${adjacent.title}` : "none found");
+    console.log("[SyncScroller] Index fallback:",
+      peer ? `${peer.id}:${peer.title}` : "none found");
+  }
 
-  return { active: activeTab, adjacent };
+  if (!peer) return { left: activeTab, right: null };
+
+  // Sort by tab.index so the visually-left pane (lower index) is `left`.
+  const [left, right] = [activeTab, peer].sort((a, b) => a.index - b.index);
+  return { left, right };
 }
 
 /**
@@ -175,15 +181,22 @@ function isCanvasUrl(url) {
     const state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
 
     if (state && state.syncing && state.tabIds.length === 2) {
-      // Restore UI from persisted background state
-      pairedTabs.left  = state.tabIds[0];
-      pairedTabs.right = state.tabIds[1];
-
-      // Fetch tab details for display
-      const [leftTab, rightTab] = await Promise.all([
-        chrome.tabs.get(pairedTabs.left).catch(() => null),
-        chrome.tabs.get(pairedTabs.right).catch(() => null),
+      // Restore UI from persisted background state.
+      // Sort by tab.index so the visually-left pane (lower index) shows on the left,
+      // independent of the order the tabs were stored in.
+      const [tabA, tabB] = await Promise.all([
+        chrome.tabs.get(state.tabIds[0]).catch(() => null),
+        chrome.tabs.get(state.tabIds[1]).catch(() => null),
       ]);
+
+      const sorted = [tabA, tabB]
+        .filter(Boolean)
+        .sort((a, b) => a.index - b.index);
+      const leftTab  = sorted[0] || tabA;
+      const rightTab = sorted[1] || tabB;
+
+      pairedTabs.left  = leftTab?.id ?? state.tabIds[0];
+      pairedTabs.right = rightTab?.id ?? state.tabIds[1];
 
       DOM.tabLeft.textContent  = truncate(leftTab?.title, 42);
       DOM.tabLeft.title        = leftTab?.url || "";
@@ -202,19 +215,19 @@ function isCanvasUrl(url) {
   }
 
   // ── Not currently syncing — detect panes ───────────────────────────────
-  const { active, adjacent } = await detectPanes();
+  const { left, right } = await detectPanes();
 
-  if (!active) {
+  if (!left) {
     DOM.tabLeft.textContent  = "No active tab found";
     DOM.tabLeft.classList.add("missing");
     setStatus("Cannot detect active tab.", "error");
     return;
   }
 
-  DOM.tabLeft.textContent = truncate(active.title, 42);
-  DOM.tabLeft.title       = active.url || "";
+  DOM.tabLeft.textContent = truncate(left.title, 42);
+  DOM.tabLeft.title       = left.url || "";
 
-  if (!adjacent) {
+  if (!right) {
     DOM.tabRight.textContent = "No split view peer found";
     DOM.tabRight.classList.add("missing");
     setStatus("Enter Split View with two tabs first.", "error");
@@ -222,11 +235,11 @@ function isCanvasUrl(url) {
     return;
   }
 
-  DOM.tabRight.textContent = truncate(adjacent.title, 42);
-  DOM.tabRight.title       = adjacent.url || "";
+  DOM.tabRight.textContent = truncate(right.title, 42);
+  DOM.tabRight.title       = right.url || "";
 
-  pairedTabs.left  = active.id;
-  pairedTabs.right = adjacent.id;
+  pairedTabs.left  = left.id;
+  pairedTabs.right = right.id;
 
   DOM.btnSync.disabled = false;
   setStatus("Ready — click to sync.", "info");
