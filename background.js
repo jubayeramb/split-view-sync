@@ -21,6 +21,15 @@ const tabPorts = {};
 /** @type {Record<number, string>} tabId → scroll mode ("window"|"container"|"canvas") */
 const tabModes = {};
 
+/**
+ * Tab IDs currently being moved into new windows by openSideBySide().
+ * Chrome fires `chrome.tabs.onRemoved` with isWindowClosing:true when the
+ * source window empties — even though the tab itself is alive in its new
+ * window — which would otherwise reset syncedTabs and kill the relay.
+ * @type {Set<number>}
+ */
+const movingTabIds = new Set();
+
 // ── Control messages (popup ↔ background) ───────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -48,6 +57,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
     }
 
+    // Open two selected tabs into a pair of side-by-side windows.
+    // Runs in the background so it survives popup closure (which happens
+    // when the popup's anchor window empties after a tabs.move).
+    case "OPEN_SIDE_BY_SIDE": {
+      openSideBySide(message.tabIds, message.leftRect, message.rightRect)
+        .then(() => sendResponse({ status: "ok" }))
+        .catch((err) => {
+          console.error("[Syncroll] OPEN_SIDE_BY_SIDE failed:", err);
+          sendResponse({ status: "failed", error: err.message });
+        });
+      return true;  // Keep channel open for async response
+    }
+
     // Content script requests MAIN world injection for canvas pages
     case "REQUEST_MAIN_INJECT": {
       const tabId = _sender.tab?.id;
@@ -69,6 +91,77 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ status: "unknown_message" });
   }
 });
+
+// ── Side-by-side window opener (runs in background so it outlives the popup)
+
+async function openSideBySide(tabIds, leftRect, rightRect) {
+  console.log("[Syncroll] openSideBySide:",
+    { tabIds, leftRect, rightRect });
+
+  const [leftTab, rightTab] = await Promise.all([
+    chrome.tabs.get(tabIds[0]).catch(() => null),
+    chrome.tabs.get(tabIds[1]).catch(() => null),
+  ]);
+  if (!leftTab || !rightTab) {
+    throw new Error("Selected tab not found — it may have been closed.");
+  }
+
+  // Mark these tabs as "in transit" so the onRemoved listener doesn't
+  // tear down syncedTabs when their source window empties.
+  tabIds.forEach((id) => movingTabIds.add(id));
+
+  try {
+    // chrome.windows.create({tabId}) rejects pinned tabs; unpin first.
+    if (leftTab.pinned)  await chrome.tabs.update(tabIds[0], { pinned: false });
+    if (rightTab.pinned) await chrome.tabs.update(tabIds[1], { pinned: false });
+
+    await positionNewWindow(tabIds[0], leftRect,  false);
+    const rightWin = await positionNewWindow(tabIds[1], rightRect, false);
+    if (rightWin?.id != null) {
+      await chrome.windows.update(rightWin.id, { focused: true }).catch(() => {});
+    }
+  } finally {
+    // Grace period for any trailing onRemoved events that fire slightly
+    // after the move completes.
+    setTimeout(() => {
+      tabIds.forEach((id) => movingTabIds.delete(id));
+    }, 1000);
+  }
+}
+
+async function positionNewWindow(tabId, rect, focused) {
+  const win = await chrome.windows.create({ tabId, focused });
+  console.log("[Syncroll] Created window", win.id, "state:", win.state);
+
+  // Step 1: force "normal" state alone (combining with geometry is rejected
+  // by some Chrome versions, silently dropping the geometry).
+  try {
+    await chrome.windows.update(win.id, { state: "normal" });
+  } catch (err) {
+    console.warn("[Syncroll] state:normal update failed:", err);
+  }
+
+  // Brief settle pause — state transitions on macOS can take a beat
+  // before geometry updates are honored.
+  await new Promise((r) => setTimeout(r, 60));
+
+  // Step 2: apply geometry.
+  try {
+    await chrome.windows.update(win.id, rect);
+  } catch (err) {
+    console.warn("[Syncroll] geometry update failed:", err);
+  }
+
+  try {
+    const after = await chrome.windows.get(win.id);
+    console.log("[Syncroll] Final state for window", win.id, {
+      state: after.state, left: after.left, top: after.top,
+      width: after.width, height: after.height,
+    });
+  } catch (_) {}
+
+  return win;
+}
 
 // ── High-frequency scroll relay (content script ↔ background) ───────────
 
@@ -139,7 +232,15 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // ── Clean up if either synced tab is closed ─────────────────────────────
 
-chrome.tabs.onRemoved.addListener((tabId) => {
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  // Skip teardown for tabs we're actively moving into side-by-side
+  // windows — Chrome fires onRemoved when the source window empties
+  // even though the tab itself is alive in its new window.
+  if (movingTabIds.has(tabId)) {
+    console.log("[Syncroll] Ignoring onRemoved for in-transit tab:",
+      tabId, "isWindowClosing:", removeInfo?.isWindowClosing);
+    return;
+  }
   delete tabPorts[tabId];
   delete tabModes[tabId];
   if (syncedTabs.includes(tabId)) {
