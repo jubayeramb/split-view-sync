@@ -2,7 +2,7 @@
 
 A Chrome extension that synchronizes scrolling between two tabs in Chrome's native Split View. Open two pages side-by-side, click sync, and they scroll together.
 
-Landing page: [syncroll.jubayeramb.com](https://syncroll.jubayeramb.com/)
+**[Add to Chrome — Chrome Web Store](https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi)** · Landing page: [syncroll.jubayeramb.com](https://syncroll.jubayeramb.com/)
 
 ## What it does
 
@@ -14,7 +14,13 @@ When Chrome's Split View places two tabs side-by-side, this extension keeps them
 
 Any combination works: a normal website on the left and Figma on the right, ChatGPT on both sides, etc.
 
-## Install (Developer Mode)
+## Install
+
+**From the Chrome Web Store** (recommended):
+
+[Add Syncroll to Chrome →](https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi)
+
+**Developer Mode** (for contributors / local builds):
 
 1. Clone or download this repository
 2. Open `chrome://extensions` in Chrome (v145+)
