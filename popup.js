@@ -1,42 +1,70 @@
 /**
  * Syncroll — Popup Script
  *
- * Detects the two Split View panes using chrome.tabs.Tab.splitViewId
- * (Chrome 145+), injects the content script into both, and tells the
- * background service worker to start relaying scroll events.
- * Falls back to index ± 1 adjacency when splitViewId is unavailable.
+ * Lets the user pick any two open tabs (cross-window) and sync their
+ * scrolling. By default the left and right panes are pre-filled from
+ * Chrome's Split View detection (splitViewId / highlighted / index ± 1),
+ * but both selections are user-overridable via custom dropdowns.
  *
- * For canvas-dominated pages (Figma, Miro, Excalidraw), also injects
- * content-main.js in the MAIN world for synthetic wheel event dispatch.
+ * "Open in new window" moves the two selected tabs into a pair of
+ * side-by-side windows positioned at the screen halves, then syncs —
+ * for users who don't know about Chrome's native Split View.
  */
 
 "use strict";
 
+// ── DOM refs ───────────────────────────────────────────────────────────
+
 const DOM = {
-  tabLeft:  document.getElementById("tab-left"),
-  tabRight: document.getElementById("tab-right"),
-  btnSync:  document.getElementById("btn-sync"),
-  status:   document.getElementById("status"),
+  triggers: {
+    left:  document.getElementById("dd-left-trigger"),
+    right: document.getElementById("dd-right-trigger"),
+  },
+  titles: {
+    left:  document.getElementById("dd-left-title"),
+    right: document.getElementById("dd-right-title"),
+  },
+  favicons: {
+    left:  document.getElementById("dd-left-favicon"),
+    right: document.getElementById("dd-right-favicon"),
+  },
+  lists: {
+    left:  document.getElementById("dd-left-list"),
+    right: document.getElementById("dd-right-list"),
+  },
+  hints: {
+    left:  document.getElementById("dd-left-hint"),
+    right: document.getElementById("dd-right-hint"),
+  },
+  openNewWindow: document.getElementById("open-new-window"),
+  btnSync:       document.getElementById("btn-sync"),
+  status:        document.getElementById("status"),
 };
 
-/** Currently syncing? Tracks toggle state. */
+// ── State ──────────────────────────────────────────────────────────────
+
 let isSynced = false;
-
-/** Tab IDs for the two panes we're syncing. */
 let pairedTabs = { left: null, right: null };
+let allTabs = [];
+let selection = { left: null, right: null };
+const dropdownOpen = { left: false, right: false };
 
-// ── Canvas URL patterns (pre-emptive MAIN world injection) ──────────────
+// ── Constants ──────────────────────────────────────────────────────────
 
 const CANVAS_URL_PATTERNS = [
   /^https?:\/\/(www\.)?figma\.com\//,
   /^https?:\/\/(www\.)?miro\.com\//,
   /^https?:\/\/(www\.)?excalidraw\.com/,
 ];
+
+// URLs we can't inject into — filter them out of the dropdown.
+const SKIP_URL_RE = /^(chrome|chrome-extension|edge|about|view-source|devtools):|^https?:\/\/chromewebstore\.google\.com/;
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function setStatus(text, type) {
   DOM.status.textContent = text;
-  DOM.status.className = type;           // "success" | "error" | "info"
+  DOM.status.className = type;
 }
 
 function truncate(str, max) {
@@ -44,20 +72,27 @@ function truncate(str, max) {
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
 }
 
+function getDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function otherSide(side) {
+  return side === "left" ? "right" : "left";
+}
+
 /**
  * Detect the two Split View panes and return them in geometric order.
  *
  * Strategy:
- *  1. (Chrome 145+) Use `splitViewId` — the native Split View identifier.
- *     Both tabs in a split view share the same splitViewId.
- *  2. Fallback: `highlighted: true` — in Split View both panes are typically
- *     highlighted in the tab strip.
- *  3. Last resort: index ± 1 adjacency heuristic.
+ *  1. (Chrome 145+) `splitViewId` — both panes share the same ID.
+ *  2. `highlighted: true` — Split View highlights both visible tabs.
+ *  3. Index ± 1 adjacency in the active window.
  *
- * The returned `left`/`right` are sorted by `tab.index` — Chrome Split View
- * places the visually-left pane at the lower index in the tab strip.
- *
- * @returns {{ left: chrome.tabs.Tab, right: chrome.tabs.Tab | null }}
+ * Sorted by `tab.index` so the visually-left pane comes first.
  */
 async function detectPanes() {
   const [activeTab] = await chrome.tabs.query({
@@ -67,68 +102,65 @@ async function detectPanes() {
 
   if (!activeTab) return { left: null, right: null };
 
-  console.log("[SyncScroller] Active tab:", activeTab.id,
-    "splitViewId:", activeTab.splitViewId,
-    "index:", activeTab.index,
-    "title:", activeTab.title);
-
   let peer = null;
 
-  // ── Strategy 1: splitViewId (Chrome 145+) ───────────────────────────
-  // Both tabs in a Split View share the same splitViewId.
   if (activeTab.splitViewId != null && activeTab.splitViewId !== -1) {
     const splitTabs = await chrome.tabs.query({
       windowId: activeTab.windowId,
       splitViewId: activeTab.splitViewId,
     });
-
-    console.log("[SyncScroller] splitViewId", activeTab.splitViewId,
-      "matched", splitTabs.length, "tabs");
-
     peer = splitTabs.find((t) => t.id !== activeTab.id) || null;
-    if (peer) console.log("[SyncScroller] Split View peer:", peer.id, peer.title);
   }
 
-  // ── Strategy 2: highlighted tabs ─────────────────────────────────────
-  // In Split View both visible tabs are highlighted in the tab strip.
   if (!peer) {
     const highlighted = await chrome.tabs.query({
       highlighted: true,
       windowId: activeTab.windowId,
     });
-
-    console.log("[SyncScroller] Highlighted tabs:", highlighted.length,
-      highlighted.map((t) => `${t.id}:${t.title}`));
-
     if (highlighted.length === 2) {
       peer = highlighted.find((t) => t.id !== activeTab.id) || null;
-      if (peer) console.log("[SyncScroller] Highlighted peer:", peer.id, peer.title);
     }
   }
 
-  // ── Strategy 3: index ± 1 fallback ──────────────────────────────────
   if (!peer) {
-    const allTabs = await chrome.tabs.query({ windowId: activeTab.windowId });
-    allTabs.sort((a, b) => a.index - b.index);
-
-    const after  = allTabs.find((t) => t.index === activeTab.index + 1) || null;
-    const before = allTabs.find((t) => t.index === activeTab.index - 1) || null;
-    peer = after || before;
-
-    console.log("[SyncScroller] Index fallback:",
-      peer ? `${peer.id}:${peer.title}` : "none found");
+    const winTabs = await chrome.tabs.query({ windowId: activeTab.windowId });
+    winTabs.sort((a, b) => a.index - b.index);
+    peer = winTabs.find((t) => t.index === activeTab.index + 1)
+        || winTabs.find((t) => t.index === activeTab.index - 1)
+        || null;
   }
 
   if (!peer) return { left: activeTab, right: null };
 
-  // Sort by tab.index so the visually-left pane (lower index) is `left`.
   const [left, right] = [activeTab, peer].sort((a, b) => a.index - b.index);
   return { left, right };
 }
 
 /**
- * Inject content.js into a tab.  Returns true on success.
+ * Fetch every open tab across all windows, filter out URLs that can't
+ * be injected (chrome://, Web Store, etc.), sort by [windowId, index].
  */
+async function fetchSyncableTabs() {
+  const tabs = await chrome.tabs.query({});
+  const syncable = [];
+  let hidden = 0;
+  for (const t of tabs) {
+    if (!t.url || SKIP_URL_RE.test(t.url)) { hidden++; continue; }
+    syncable.push(t);
+  }
+  syncable.sort((a, b) => {
+    if (a.windowId !== b.windowId) return a.windowId - b.windowId;
+    return a.index - b.index;
+  });
+  allTabs = syncable;
+  return { tabs: syncable, hiddenCount: hidden };
+}
+
+function isCanvasUrl(url) {
+  if (!url) return false;
+  return CANVAS_URL_PATTERNS.some((re) => re.test(url));
+}
+
 async function injectContentScript(tabId) {
   try {
     await chrome.scripting.executeScript({
@@ -137,15 +169,11 @@ async function injectContentScript(tabId) {
     });
     return true;
   } catch (err) {
-    console.warn("[SyncScroller] Injection failed for tab", tabId, err.message);
+    console.warn("[Syncroll] Injection failed for tab", tabId, err.message);
     return false;
   }
 }
 
-/**
- * Inject content-main.js into a tab in the MAIN world.
- * Used for canvas-dominated pages that need synthetic wheel events.
- */
 async function injectMainWorldScript(tabId) {
   try {
     await chrome.scripting.executeScript({
@@ -154,95 +182,295 @@ async function injectMainWorldScript(tabId) {
       world: "MAIN",
       injectImmediately: true,
     });
-    console.log("[SyncScroller] MAIN world injected into tab", tabId);
     return true;
   } catch (err) {
-    console.warn(
-      "[SyncScroller] MAIN world injection failed for tab",
-      tabId, err.message,
-    );
+    console.warn("[Syncroll] MAIN world injection failed for tab", tabId, err.message);
     return false;
   }
 }
 
-/**
- * Check if a URL belongs to a known canvas-based application.
- */
-function isCanvasUrl(url) {
-  if (!url) return false;
-  return CANVAS_URL_PATTERNS.some((re) => re.test(url));
+// ── Dropdown rendering & selection ─────────────────────────────────────
+
+const TRANSPARENT_PIXEL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+
+function setFavicon(imgEl, src) {
+  imgEl.src = src || TRANSPARENT_PIXEL;
 }
 
-// ── Init: restore state or detect panes ──────────────────────────────────
+function updateTriggerLabel(side) {
+  const tabId = selection[side];
+  const tab = allTabs.find((t) => t.id === tabId)
+           || (tabId != null ? { id: tabId, title: "(closed tab)", url: "", favIconUrl: "" } : null);
+
+  if (tab && allTabs.some((t) => t.id === tab.id)) {
+    DOM.titles[side].textContent = truncate(tab.title || "(untitled)", 44);
+    DOM.triggers[side].title = tab.url || "";
+    setFavicon(DOM.favicons[side], tab.favIconUrl);
+  } else {
+    DOM.titles[side].textContent = "Choose a tab…";
+    DOM.triggers[side].title = "";
+    setFavicon(DOM.favicons[side], null);
+  }
+}
+
+function renderDropdown(side) {
+  const list = DOM.lists[side];
+  const excludeId = selection[otherSide(side)];
+  const selectedId = selection[side];
+
+  list.innerHTML = "";
+
+  if (allTabs.length === 0) {
+    const li = document.createElement("li");
+    li.className = "dropdown-option";
+    li.textContent = "No syncable tabs open.";
+    li.style.color = "#6a6a88";
+    li.style.cursor = "default";
+    list.appendChild(li);
+    return;
+  }
+
+  for (const tab of allTabs) {
+    if (tab.id === excludeId) continue;
+
+    const li = document.createElement("li");
+    li.className = "dropdown-option";
+    li.setAttribute("role", "option");
+    li.tabIndex = -1;
+    li.dataset.tabId = String(tab.id);
+    if (tab.id === selectedId) li.setAttribute("aria-selected", "true");
+
+    const fav = document.createElement("img");
+    fav.className = "favicon";
+    fav.alt = "";
+    fav.width = 16;
+    fav.height = 16;
+    fav.src = tab.favIconUrl || TRANSPARENT_PIXEL;
+    fav.addEventListener("error", () => { fav.src = TRANSPARENT_PIXEL; });
+
+    const text = document.createElement("span");
+    text.className = "opt-text";
+    const title = document.createElement("span");
+    title.className = "opt-title";
+    title.textContent = tab.title || "(untitled)";
+    const url = document.createElement("span");
+    url.className = "opt-url";
+    url.textContent = getDomain(tab.url);
+    text.append(title, url);
+
+    li.title = tab.url || "";
+    li.append(fav, text);
+    li.addEventListener("click", () => onOptionClick(side, tab.id));
+    list.appendChild(li);
+  }
+}
+
+function setSelection(side, tabId) {
+  selection[side] = tabId;
+  pairedTabs[side] = tabId;
+  updateTriggerLabel(side);
+  updateSyncButtonEnabled();
+}
+
+function updateSyncButtonEnabled() {
+  if (isSynced) return;
+  const ok = selection.left != null
+          && selection.right != null
+          && selection.left !== selection.right;
+  DOM.btnSync.disabled = !ok;
+}
+
+function setControlsDisabled(disabled) {
+  DOM.triggers.left.disabled = disabled;
+  DOM.triggers.right.disabled = disabled;
+  DOM.openNewWindow.disabled = disabled;
+}
+
+// ── Dropdown open/close ────────────────────────────────────────────────
+
+function openDropdown(side) {
+  const other = otherSide(side);
+  if (dropdownOpen[other]) closeDropdown(other);
+
+  renderDropdown(side);
+  DOM.lists[side].hidden = false;
+  DOM.triggers[side].setAttribute("aria-expanded", "true");
+  dropdownOpen[side] = true;
+
+  const selected = DOM.lists[side].querySelector('[aria-selected="true"]');
+  const first = DOM.lists[side].querySelector('[role="option"]');
+  (selected || first)?.focus();
+}
+
+function closeDropdown(side) {
+  DOM.lists[side].hidden = true;
+  DOM.triggers[side].setAttribute("aria-expanded", "false");
+  dropdownOpen[side] = false;
+}
+
+function closeAllDropdowns() {
+  closeDropdown("left");
+  closeDropdown("right");
+}
+
+function onTriggerClick(side) {
+  if (DOM.triggers[side].disabled) return;
+  if (dropdownOpen[side]) closeDropdown(side);
+  else openDropdown(side);
+}
+
+function onOptionClick(side, tabId) {
+  setSelection(side, tabId);
+  closeDropdown(side);
+  DOM.triggers[side].focus();
+}
+
+function onDropdownKeydown(e, side) {
+  const list = DOM.lists[side];
+  const options = Array.from(list.querySelectorAll('[role="option"]'));
+  if (options.length === 0) return;
+
+  const current = document.activeElement?.closest('[role="option"]');
+  const idx = current ? options.indexOf(current) : -1;
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      options[Math.min(idx + 1, options.length - 1)]?.focus();
+      break;
+    case "ArrowUp":
+      e.preventDefault();
+      options[Math.max(idx - 1, 0)]?.focus();
+      break;
+    case "Home":
+      e.preventDefault();
+      options[0]?.focus();
+      break;
+    case "End":
+      e.preventDefault();
+      options[options.length - 1]?.focus();
+      break;
+    case "Enter":
+    case " ":
+      e.preventDefault();
+      if (current) onOptionClick(side, Number(current.dataset.tabId));
+      break;
+    case "Escape":
+      e.preventDefault();
+      closeDropdown(side);
+      DOM.triggers[side].focus();
+      break;
+    case "Tab":
+      closeDropdown(side);
+      break;
+  }
+}
+
+// ── "Open in new window" — two side-by-side windows ────────────────────
+
+async function openInSideBySideWindows(leftTabId, rightTabId) {
+  const availLeft   = window.screen.availLeft   ?? 0;
+  const availTop    = window.screen.availTop    ?? 0;
+  const availWidth  = window.screen.availWidth  || 1280;
+  const availHeight = window.screen.availHeight || 800;
+  const halfW = Math.floor(availWidth / 2);
+
+  const leftRect  = { left: availLeft,         top: availTop, width: halfW,              height: availHeight };
+  const rightRect = { left: availLeft + halfW, top: availTop, width: availWidth - halfW, height: availHeight };
+
+  // Delegate the actual window creation + positioning to the background
+  // service worker. The popup is anchored to one of the source windows,
+  // which can empty (and therefore close) once we move its only tab to a
+  // new window — that kills the popup mid-flow. The background service
+  // worker is persistent, so it can finish positioning both windows
+  // even after the popup dies.
+  await chrome.runtime.sendMessage({
+    type: "OPEN_SIDE_BY_SIDE",
+    tabIds: [leftTabId, rightTabId],
+    leftRect,
+    rightRect,
+  });
+}
+
+// ── Init: restore state or detect panes ────────────────────────────────
 
 (async function init() {
-  // ── First check if we're already syncing (popup may have been closed) ──
+  // If background is already syncing, restore that UI directly.
   try {
     const state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
-
-    if (state && state.syncing && state.tabIds.length === 2) {
-      // Restore UI from persisted background state.
-      // Sort by tab.index so the visually-left pane (lower index) shows on the left,
-      // independent of the order the tabs were stored in.
-      const [tabA, tabB] = await Promise.all([
+    if (state?.syncing && state.tabIds?.length === 2) {
+      const fetched = await Promise.all([
         chrome.tabs.get(state.tabIds[0]).catch(() => null),
         chrome.tabs.get(state.tabIds[1]).catch(() => null),
       ]);
+      const valid = fetched.filter(Boolean).sort((a, b) => a.index - b.index);
+      const leftTab  = valid[0] || fetched[0];
+      const rightTab = valid[1] || fetched[1];
 
-      const sorted = [tabA, tabB]
-        .filter(Boolean)
-        .sort((a, b) => a.index - b.index);
-      const leftTab  = sorted[0] || tabA;
-      const rightTab = sorted[1] || tabB;
+      allTabs = fetched.filter(Boolean);
+      selection.left  = leftTab?.id  ?? state.tabIds[0];
+      selection.right = rightTab?.id ?? state.tabIds[1];
+      pairedTabs.left  = selection.left;
+      pairedTabs.right = selection.right;
 
-      pairedTabs.left  = leftTab?.id ?? state.tabIds[0];
-      pairedTabs.right = rightTab?.id ?? state.tabIds[1];
-
-      DOM.tabLeft.textContent  = truncate(leftTab?.title, 42);
-      DOM.tabLeft.title        = leftTab?.url || "";
-      DOM.tabRight.textContent = truncate(rightTab?.title, 42);
-      DOM.tabRight.title       = rightTab?.url || "";
+      updateTriggerLabel("left");
+      updateTriggerLabel("right");
 
       isSynced = true;
       DOM.btnSync.textContent = "Stop Syncing";
       DOM.btnSync.classList.add("active");
       DOM.btnSync.disabled = false;
+      setControlsDisabled(true);
       setStatus("Synced — scroll either pane!", "success");
       return;
     }
   } catch (_) {
-    // Background not ready — fall through to detection
+    // Background not ready — fall through to fresh detection.
   }
 
-  // ── Not currently syncing — detect panes ───────────────────────────────
-  const { left, right } = await detectPanes();
+  // Fresh state: fetch tabs and detect Split View panes in parallel.
+  const [{ hiddenCount }, panes] = await Promise.all([
+    fetchSyncableTabs(),
+    detectPanes(),
+  ]);
 
-  if (!left) {
-    DOM.tabLeft.textContent  = "No active tab found";
-    DOM.tabLeft.classList.add("missing");
-    setStatus("Cannot detect active tab.", "error");
-    return;
+  DOM.triggers.left.disabled  = false;
+  DOM.triggers.right.disabled = false;
+
+  // Pre-fill from Split View detection if both tabs are syncable.
+  if (panes.left && allTabs.some((t) => t.id === panes.left.id)) {
+    selection.left  = panes.left.id;
+    pairedTabs.left = panes.left.id;
+  }
+  if (panes.right && allTabs.some((t) => t.id === panes.right.id)) {
+    selection.right  = panes.right.id;
+    pairedTabs.right = panes.right.id;
   }
 
-  DOM.tabLeft.textContent = truncate(left.title, 42);
-  DOM.tabLeft.title       = left.url || "";
-
-  if (!right) {
-    DOM.tabRight.textContent = "No split view peer found";
-    DOM.tabRight.classList.add("missing");
-    setStatus("Enter Split View with two tabs first.", "error");
-    DOM.btnSync.disabled = true;
-    return;
+  // If no left selection yet, fall back to the active tab (when syncable).
+  if (selection.left == null) {
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (active && allTabs.some((t) => t.id === active.id)) {
+      selection.left  = active.id;
+      pairedTabs.left = active.id;
+    }
   }
 
-  DOM.tabRight.textContent = truncate(right.title, 42);
-  DOM.tabRight.title       = right.url || "";
+  updateTriggerLabel("left");
+  updateTriggerLabel("right");
 
-  pairedTabs.left  = left.id;
-  pairedTabs.right = right.id;
+  if (hiddenCount > 0) {
+    DOM.hints.left.textContent =
+      `${hiddenCount} system tab${hiddenCount === 1 ? "" : "s"} hidden (chrome://, Web Store).`;
+  }
 
-  DOM.btnSync.disabled = false;
-  setStatus("Ready — click to sync.", "info");
+  updateSyncButtonEnabled();
+  setStatus(
+    selection.left != null && selection.right != null
+      ? "Ready — click to sync."
+      : "Choose two tabs to sync.",
+    "info",
+  );
 })();
 
 // ── Sync / Unsync toggle ───────────────────────────────────────────────
@@ -251,20 +479,32 @@ DOM.btnSync.addEventListener("click", async () => {
   // ── UNSYNC ──
   if (isSynced) {
     await chrome.runtime.sendMessage({ type: "STOP_SYNC" });
-
     isSynced = false;
     DOM.btnSync.textContent = "Sync Split Panes";
     DOM.btnSync.classList.remove("active");
+    setControlsDisabled(false);
+    updateSyncButtonEnabled();
     setStatus("Sync stopped.", "info");
     return;
   }
 
   // ── SYNC ──
+  if (selection.left == null
+      || selection.right == null
+      || selection.left === selection.right) {
+    return;
+  }
+
   DOM.btnSync.disabled = true;
   setStatus("Injecting scripts…", "info");
 
-  const leftOk  = await injectContentScript(pairedTabs.left);
-  const rightOk = await injectContentScript(pairedTabs.right);
+  const leftId  = selection.left;
+  const rightId = selection.right;
+
+  const [leftOk, rightOk] = await Promise.all([
+    injectContentScript(leftId),
+    injectContentScript(rightId),
+  ]);
 
   if (!leftOk || !rightOk) {
     setStatus(
@@ -275,28 +515,83 @@ DOM.btnSync.addEventListener("click", async () => {
     return;
   }
 
-  // Pre-emptively inject MAIN world script for known canvas URLs
+  // Pre-emptive MAIN world injection for known canvas URLs.
   const [leftTabInfo, rightTabInfo] = await Promise.all([
-    chrome.tabs.get(pairedTabs.left).catch(() => null),
-    chrome.tabs.get(pairedTabs.right).catch(() => null),
+    chrome.tabs.get(leftId).catch(() => null),
+    chrome.tabs.get(rightId).catch(() => null),
   ]);
+  if (leftTabInfo  && isCanvasUrl(leftTabInfo.url))  await injectMainWorldScript(leftId);
+  if (rightTabInfo && isCanvasUrl(rightTabInfo.url)) await injectMainWorldScript(rightId);
 
-  if (leftTabInfo && isCanvasUrl(leftTabInfo.url)) {
-    await injectMainWorldScript(pairedTabs.left);
-  }
-  if (rightTabInfo && isCanvasUrl(rightTabInfo.url)) {
-    await injectMainWorldScript(pairedTabs.right);
-  }
-
-  // Tell background which two tabs to relay between
+  // Tell background which two tabs to relay between.
   await chrome.runtime.sendMessage({
     type: "START_SYNC",
-    tabIds: [pairedTabs.left, pairedTabs.right],
+    tabIds: [leftId, rightId],
   });
 
   isSynced = true;
   DOM.btnSync.textContent = "Stop Syncing";
   DOM.btnSync.classList.add("active");
   DOM.btnSync.disabled = false;
+  setControlsDisabled(true);
+
+  // Move tabs into side-by-side windows AFTER START_SYNC, because the
+  // window-create call may steal focus from the popup.
+  if (DOM.openNewWindow.checked) {
+    setStatus("Opening side-by-side windows…", "info");
+    try {
+      await openInSideBySideWindows(leftId, rightId);
+    } catch (err) {
+      console.warn("[Syncroll] openInSideBySideWindows failed:", err);
+      setStatus("Sync active — couldn't open new windows.", "info");
+      return;
+    }
+  }
+
   setStatus("Synced — scroll either pane!", "success");
+});
+
+// ── Dropdown event wiring ──────────────────────────────────────────────
+
+DOM.triggers.left.addEventListener("click",  () => onTriggerClick("left"));
+DOM.triggers.right.addEventListener("click", () => onTriggerClick("right"));
+
+DOM.lists.left.addEventListener("keydown",  (e) => onDropdownKeydown(e, "left"));
+DOM.lists.right.addEventListener("keydown", (e) => onDropdownKeydown(e, "right"));
+
+// Click outside any picker closes all dropdowns.
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".pane-picker")) return;
+  closeAllDropdowns();
+});
+
+// Esc from anywhere closes open dropdowns.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (dropdownOpen.left || dropdownOpen.right) {
+    closeAllDropdowns();
+  }
+});
+
+// ── Keep dropdown data in sync with tab events ─────────────────────────
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  if (isSynced) return;
+  await fetchSyncableTabs();
+  let changed = false;
+  if (selection.left === tabId)  { selection.left  = null; pairedTabs.left  = null; updateTriggerLabel("left");  changed = true; }
+  if (selection.right === tabId) { selection.right = null; pairedTabs.right = null; updateTriggerLabel("right"); changed = true; }
+  if (dropdownOpen.left)  renderDropdown("left");
+  if (dropdownOpen.right) renderDropdown("right");
+  if (changed) updateSyncButtonEnabled();
+});
+
+chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo) => {
+  if (isSynced) return;
+  if (!("title" in changeInfo) && !("url" in changeInfo) && !("favIconUrl" in changeInfo)) return;
+  await fetchSyncableTabs();
+  updateTriggerLabel("left");
+  updateTriggerLabel("right");
+  if (dropdownOpen.left)  renderDropdown("left");
+  if (dropdownOpen.right) renderDropdown("right");
 });

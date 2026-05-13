@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Syncroll: Split View Sync Scroller",
   "short_name": "Syncroll",
-  "version": "1.0.0",
-  "description": "Sync scroll between two tabs in Chrome's Split View. Works on websites, chat UIs, and canvas apps like Figma.",
+  "version": "1.1.0",
+  "description": "Sync scroll between any two tabs — pick from a list or open side-by-side. Works on websites, chat UIs, and canvas apps like Figma.",
   "homepage_url": "https://syncroll.jubayeramb.com/",
   "author": "Jubayer Al Mamun",
   "permissions": [
