@@ -12,7 +12,7 @@
     }
 
     body {
-      width: 320px;
+      width: 360px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         Oxygen, Ubuntu, Cantarell, sans-serif;
       background: #1a1a2e;
@@ -38,41 +38,156 @@
       margin-top: 4px;
     }
 
-    .tab-info {
-      background: #16213e;
-      border: 1px solid #0f3460;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 14px;
-      font-size: 12px;
-      line-height: 1.6;
+    .pane-picker {
+      margin-bottom: 10px;
     }
 
-    .tab-info .label {
+    .pane-picker .label {
       color: #8888aa;
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
     }
 
-    .tab-info .tab-title {
+    .dropdown-wrapper {
+      position: relative;
+    }
+
+    .dropdown-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
       color: #c4c4dd;
-      white-space: nowrap;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s;
+    }
+
+    .dropdown-trigger:hover:not(:disabled),
+    .dropdown-trigger[aria-expanded="true"] {
+      border-color: #533483;
+    }
+
+    .dropdown-trigger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .dropdown-trigger .dd-title {
+      flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 280px;
+      white-space: nowrap;
     }
 
-    .tab-info .tab-title.missing {
-      color: #e94560;
-      font-style: italic;
+    .dropdown-trigger .caret {
+      flex-shrink: 0;
+      color: #8888aa;
     }
 
-    .divider {
-      height: 1px;
+    .favicon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
       background: #0f3460;
-      margin: 8px 0;
+      border-radius: 2px;
+      object-fit: contain;
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      list-style: none;
+      padding: 4px 0;
+      z-index: 10;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+    }
+
+    .dropdown-list:focus { outline: none; }
+
+    .dropdown-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #c4c4dd;
+    }
+
+    .dropdown-option:hover,
+    .dropdown-option.active,
+    .dropdown-option[aria-selected="true"] {
+      background: #0f3460;
+    }
+
+    .dropdown-option .opt-text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .dropdown-option .opt-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dropdown-option .opt-url {
+      color: #6a6a88;
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dd-hint {
+      font-size: 10px;
+      color: #6a6a88;
+      margin-top: 4px;
+      min-height: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #c4c4dd;
+      margin: 4px 0 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #533483;
+      cursor: pointer;
+    }
+
+    .checkbox-row input[type="checkbox"]:disabled,
+    .checkbox-row input[type="checkbox"]:disabled + .checkbox-label {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     #btn-sync {
@@ -161,18 +276,49 @@
 <body>
   <div class="header">
     <h1>Syncroll</h1>
-    <p>Sync scroll between Split View tabs</p>
+    <p>Sync scroll between any two tabs</p>
   </div>
 
-  <div class="tab-info">
+  <div class="pane-picker" data-side="left">
     <div class="label">Left Pane</div>
-    <div class="tab-title" id="tab-left">Detecting…</div>
-    <div class="divider"></div>
-    <div class="label">Right Pane</div>
-    <div class="tab-title" id="tab-right">Detecting…</div>
+    <div class="dropdown-wrapper">
+      <button type="button" class="dropdown-trigger" id="dd-left-trigger"
+              aria-haspopup="listbox" aria-expanded="false"
+              aria-controls="dd-left-list" disabled>
+        <img class="favicon" id="dd-left-favicon" alt="" width="16" height="16" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
+        <span class="dd-title" id="dd-left-title">Detecting…</span>
+        <svg class="caret" viewBox="0 0 12 8" width="10" height="6" aria-hidden="true">
+          <path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <ul class="dropdown-list" id="dd-left-list" role="listbox" tabindex="-1" hidden></ul>
+    </div>
+    <div class="dd-hint" id="dd-left-hint"></div>
   </div>
 
-  <button id="btn-sync" disabled>Sync Split Panes</button>
+  <div class="pane-picker" data-side="right">
+    <div class="label">Right Pane</div>
+    <div class="dropdown-wrapper">
+      <button type="button" class="dropdown-trigger" id="dd-right-trigger"
+              aria-haspopup="listbox" aria-expanded="false"
+              aria-controls="dd-right-list" disabled>
+        <img class="favicon" id="dd-right-favicon" alt="" width="16" height="16" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
+        <span class="dd-title" id="dd-right-title">Detecting…</span>
+        <svg class="caret" viewBox="0 0 12 8" width="10" height="6" aria-hidden="true">
+          <path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <ul class="dropdown-list" id="dd-right-list" role="listbox" tabindex="-1" hidden></ul>
+    </div>
+    <div class="dd-hint" id="dd-right-hint"></div>
+  </div>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="open-new-window">
+    <span class="checkbox-label">Open in new window (side-by-side)</span>
+  </label>
+
+  <button type="button" id="btn-sync" disabled>Sync Split Panes</button>
 
   <div id="status" class="info">Scanning open tabs…</div>
 
