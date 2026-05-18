@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Syncroll: Split View Sync Scroller — Sync scroll between Chrome tabs</title>
-  <meta name="description" content="Syncroll is a free Chrome extension that syncs scrolling between two tabs in Chrome's Split View. Works on websites, chat UIs (ChatGPT, Gemini), and canvas apps (Figma, Miro).">
-  <meta name="keywords" content="chrome extension, split view, scroll sync, side by side scrolling, sync scroll, chrome split view, figma sync, chatgpt side by side">
+  <meta name="description" content="Syncroll is a free Chrome extension that syncs scrolling between any two open tabs — Chrome Split View or two side-by-side windows. Works on websites, chat UIs (ChatGPT, Gemini), and canvas apps (Figma, Miro).">
+  <meta name="keywords" content="chrome extension, split view, scroll sync, side by side scrolling, sync scroll, chrome split view, figma sync, chatgpt side by side, cross window scroll, dual window scroll">
   <meta name="author" content="Jubayer Al Mamun">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#1a1a2e">
@@ -18,7 +18,7 @@
 
   <!-- Open Graph -->
   <meta property="og:title" content="Syncroll: Split View Sync Scroller">
-  <meta property="og:description" content="Open two pages side-by-side and scroll them together. Works on websites, ChatGPT, Figma, and more.">
+  <meta property="og:description" content="Pick any two open tabs and scroll them together — Chrome Split View or two side-by-side windows. Works on websites, ChatGPT, Figma, and more.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://syncroll.jubayeramb.com/">
   <meta property="og:site_name" content="Syncroll">
@@ -37,7 +37,7 @@
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Syncroll: Split View Sync Scroller">
-  <meta name="twitter:description" content="Open two pages side-by-side and scroll them together. Works on websites, ChatGPT, Figma, and more.">
+  <meta name="twitter:description" content="Pick any two open tabs and scroll them together — Chrome Split View or two side-by-side windows. Works on websites, ChatGPT, Figma, and more.">
   <meta name="twitter:image" content="https://syncroll.jubayeramb.com/video-poster.jpeg">
   <meta name="twitter:image:alt" content="Syncroll — Scroll two tabs together in Chrome's Split View">
   <meta name="twitter:player" content="https://www.youtube.com/embed/vv8RfyK7W4g">
@@ -54,13 +54,13 @@
         "@id": "https://syncroll.jubayeramb.com/#software",
         "name": "Syncroll: Split View Sync Scroller",
         "alternateName": "Syncroll",
-        "description": "A Chrome extension that synchronizes scrolling between two tabs in Chrome's Split View. Works on standard websites, chat UIs like ChatGPT and Gemini, and canvas apps like Figma, Miro, and Excalidraw.",
+        "description": "A Chrome extension that synchronizes scrolling between any two open tabs — Chrome's native Split View, or two side-by-side windows it can arrange for you. Works on standard websites, chat UIs like ChatGPT and Gemini, and canvas apps like Figma, Miro, and Excalidraw.",
         "applicationCategory": "BrowserApplication",
         "browserRequirements": "Requires Chrome 145 or later",
         "url": "https://syncroll.jubayeramb.com/",
         "installUrl": "https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi",
         "image": "https://syncroll.jubayeramb.com/video-poster.jpeg",
-        "softwareVersion": "1.0.0",
+        "softwareVersion": "1.1.0",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -326,6 +326,92 @@
     }
     .privacy strong { color: #ffffff; }
 
+    /* ── Why Syncroll grid ─────────────────────────────────────────── */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .why-card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      padding: 18px 20px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .why-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 3px;
+      height: 100%;
+      background: linear-gradient(180deg, #8B68FF 0%, #533483 100%);
+      opacity: 0.85;
+    }
+    .why-card h3 {
+      font-size: 14.5px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      color: #ffffff;
+      letter-spacing: 0.1px;
+    }
+    .why-card p {
+      font-size: 13.5px;
+      color: #c4c4dd;
+      margin: 0;
+      line-height: 1.5;
+    }
+    @media (max-width: 560px) {
+      .why-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Closing CTA ───────────────────────────────────────────────── */
+    .closing-cta {
+      text-align: center;
+      padding: 40px 24px 44px;
+      margin-top: 8px;
+      background: linear-gradient(180deg, #16213e 0%, #1a1f3d 100%);
+      border: 1px solid #0f3460;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .closing-cta::before {
+      content: "";
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 520px;
+      max-width: 110%;
+      height: 320px;
+      background: radial-gradient(
+        ellipse at 50% 50%,
+        rgba(139, 104, 255, 0.28) 0%,
+        rgba(139, 104, 255, 0.05) 45%,
+        transparent 70%
+      );
+      pointer-events: none;
+    }
+    .closing-cta h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+      margin: 0 0 10px;
+      text-transform: none;
+      position: relative;
+    }
+    .closing-cta p {
+      font-size: 15px;
+      color: #c4c4dd;
+      margin: 0 auto 24px;
+      max-width: 440px;
+      position: relative;
+    }
+    .closing-cta .cta { position: relative; }
+
     footer {
       text-align: center;
       padding: 24px;
@@ -348,7 +434,7 @@
     <div class="hero">
       <img src="icon.svg" alt="Syncroll logo" width="72" height="72">
       <h1>Syncroll</h1>
-      <p class="tagline">Scroll two tabs together. A Chrome extension that syncs scroll position between Split View panes.</p>
+      <p class="tagline">Scroll any two tabs together — Chrome's native Split View, or two side-by-side windows Syncroll opens for you.</p>
       <div class="cta">
         <a href="https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi" class="btn primary" target="_blank" rel="noopener">Add to Chrome — Free</a>
         <a href="https://github.com/jubayeramb/split-view-sync" class="btn secondary" target="_blank" rel="noopener">View on GitHub</a>
@@ -368,6 +454,49 @@
         </button>
       </div>
       <p class="video-meta">30-second walkthrough · plays in place</p>
+    </section>
+
+    <section>
+      <h2>Why Syncroll</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <h3>Built for Chrome's native Split View</h3>
+          <p>Designed around Chrome 145+ Split View — open the popup inside a split and both panes are detected automatically. A first-class fit for Chrome's newest tab layout.</p>
+        </div>
+        <div class="why-card">
+          <h3>Side-by-side windows on demand</h3>
+          <p>Tick a single checkbox and Syncroll arranges two windows at the left and right halves of your screen — instant side-by-side, on any monitor, in any setup.</p>
+        </div>
+        <div class="why-card">
+          <h3>Pick any two open tabs</h3>
+          <p>Cross-window dropdowns list every open page with its favicon. Choose the left and right pane from anywhere — no dragging tabs around to set things up first.</p>
+        </div>
+        <div class="why-card">
+          <h3>Canvas-app pan sync</h3>
+          <p>Wheel events relayed across panes so Figma, Miro, and Excalidraw canvases pan together in lock-step. A capability built right into Syncroll from day one.</p>
+        </div>
+        <div class="why-card">
+          <h3>Chat UI aware</h3>
+          <p>Detects the inner scroll container on ChatGPT, Gemini, and Slack — sidebars stay anchored while the conversation scrolls together on both sides.</p>
+        </div>
+        <div class="why-card">
+          <h3>Private by design</h3>
+          <p>No servers, no analytics, no data collection. Sync runs locally through Chrome's built-in messaging — your tabs and content stay entirely on your machine.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <div class="features">
+        <div class="feature">
+          <img src="feature-tabpicker.jpeg" alt="Syncroll popup showing two tab dropdowns with favicons and an 'Open in new window' checkbox" width="1280" height="800" loading="lazy" decoding="async">
+          <div class="feature-body">
+            <h3>Tab picker + side-by-side windows</h3>
+            <p>Cross-window picker lists every open tab with its favicon. Works seamlessly inside Chrome's native Split View, and tick <strong>Open in new window</strong> to have Syncroll arrange two side-by-side windows for you on the fly.</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section>
@@ -401,14 +530,24 @@
       <h2>Get started</h2>
       <ol class="steps">
         <li>Install Syncroll from the <a href="https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi" target="_blank" rel="noopener"><strong>Chrome Web Store</strong></a>.</li>
-        <li>Open two tabs in Chrome's Split View — right-click a tab and pick <strong>Split view</strong>, or drag a tab to the side.</li>
-        <li>Click the Syncroll icon and hit <strong>Sync Split Panes</strong>. Scroll either side; the other follows.</li>
+        <li>Click the Syncroll icon and pick the <strong>left</strong> and <strong>right</strong> tab from the dropdowns. Any tab in any window works.</li>
+        <li>Already in Chrome's native Split View? Both panes are detected automatically. Or tick <strong>Open in new window</strong> to have Syncroll arrange two side-by-side windows for you.</li>
+        <li>Hit <strong>Sync Split Panes</strong>. Scroll either side; the other follows.</li>
       </ol>
     </section>
 
     <section>
       <div class="privacy">
         <strong>Private by default.</strong> No data collection, no tracking, no servers. All sync happens locally between your tabs through Chrome's built-in messaging.
+      </div>
+    </section>
+
+    <section class="closing-cta" aria-label="Install Syncroll">
+      <h2>Ready to scroll two tabs together?</h2>
+      <p>Free, open source, and built for Chrome's native Split View. Install in one click — no account, no setup.</p>
+      <div class="cta">
+        <a href="https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi" class="btn primary" target="_blank" rel="noopener">Add to Chrome — Free</a>
+        <a href="https://github.com/jubayeramb/split-view-sync" class="btn secondary" target="_blank" rel="noopener">View on GitHub</a>
       </div>
     </section>
   </main>
