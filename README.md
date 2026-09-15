@@ -8,7 +8,7 @@ A Chrome extension that synchronizes scrolling between two tabs in Chrome's nati
 
 When Chrome's Split View places two tabs side-by-side, this extension keeps them scroll-synced. It works across three types of pages:
 
-- **Normal websites** — Scroll position syncs by percentage, so pages of different lengths stay aligned.
+- **Normal websites** — Scroll position syncs by percentage by default, so pages of different lengths stay aligned. Switch **Scroll alignment** to **Exact (px)** to sync the exact pixel offset instead; the shorter page then stops at its end while the longer one keeps scrolling.
 - **Chat UIs (ChatGPT, Gemini)** — These apps scroll inside an inner `<div>`, not the window. The extension detects the scrollable container automatically.
 - **Canvas apps (Figma, Miro, Excalidraw)** — These render via WebGL with no DOM scrolling. The extension relays raw wheel deltas and dispatches synthetic wheel events on the target canvas.
 
@@ -33,8 +33,9 @@ Any combination works: a normal website on the left and Figma on the right, Chat
 1. Open two tabs in Chrome's Split View (right-click a tab → "Split view" or drag a tab to the side)
 2. Click the extension icon in the toolbar
 3. The popup shows both detected panes
-4. Click **Sync Split Panes**
-5. Scroll either side — the other follows
+4. Optionally pick a **Scroll alignment**: **Relative (%)** or **Exact (px)**. You can change it while syncing, and it is remembered.
+5. Click **Sync Split Panes**
+6. Scroll either side — the other follows
 
 To stop syncing, click the extension icon again and click **Stop Syncing**.
 
@@ -50,8 +51,8 @@ The extension finds your two Split View tabs using three strategies (in order):
 
 | Page Type | Examples | Sync Method |
 |---|---|---|
-| Standard websites | Wikipedia, MDN, news sites | Proportional scroll percentage |
-| Container-scroll SPAs | ChatGPT, Gemini, Slack | Percentage on detected inner `<div>` |
+| Standard websites | Wikipedia, MDN, news sites | Scroll percentage or exact pixel offset |
+| Container-scroll SPAs | ChatGPT, Gemini, Slack | Percentage or pixel offset on detected inner `<div>` |
 | Canvas/WebGL apps | Figma, Miro, Excalidraw | Wheel delta relay via synthetic events |
 
 Cross-mode combinations are fully supported (e.g., normal website ↔ Figma canvas).
@@ -74,7 +75,8 @@ popup.js            background.js          content.js           content-main.js
     │                     │── DO_WHEEL ─────────►│── DISPATCH_WHEEL ──►│
 ```
 
-- **Percentage sync**: `scrollPercent = scrollTop / (scrollHeight - clientHeight)`. Applied on the target as `targetY = percent * maxScroll`.
+- **Percentage sync** (default): `scrollPercent = scrollTop / (scrollHeight - clientHeight)`. Applied on the target as `targetY = percent * maxScroll`.
+- **Pixel sync**: the source `scrollTop` is applied directly on the target, clamped to its `maxScroll`.
 - **Wheel relay**: Raw `deltaX`/`deltaY` forwarded between tabs. On canvas pages, a MAIN world script dispatches synthetic `WheelEvent` at the canvas center.
 - **Echo prevention**: Timestamp-based grace period (80ms) prevents scroll events from bouncing back and forth.
 
@@ -113,6 +115,7 @@ split-view-sync/
 | `tabs` | Query tab info for Split View detection |
 | `scripting` | Inject content scripts into both panes |
 | `activeTab` | Access the currently focused tab |
+| `storage` | Remember the scroll alignment preference |
 | `<all_urls>` (host) | Allow injection on any standard webpage |
 
 ## Technical requirements

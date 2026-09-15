@@ -190,6 +190,66 @@
       cursor: not-allowed;
     }
 
+    .sync-by {
+      border: none;
+      margin: 4px 0 10px;
+    }
+
+    .sync-by .label {
+      color: #8888aa;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      padding: 0;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      padding: 2px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+    }
+
+    .segment {
+      position: relative;
+      display: block;
+      cursor: pointer;
+    }
+
+    .segment input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segment span {
+      display: block;
+      padding: 6px 0;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 12px;
+      color: #8888aa;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .segment:hover span {
+      color: #c4c4dd;
+    }
+
+    .segment input:checked + span {
+      background: #533483;
+      color: #ffffff;
+    }
+
+    .segment input:focus-visible + span {
+      outline: 2px solid #8f6ad0;
+      outline-offset: -2px;
+    }
+
     #btn-sync {
       display: block;
       width: 100%;
@@ -312,6 +372,23 @@
     </div>
     <div class="dd-hint" id="dd-right-hint"></div>
   </div>
+
+  <fieldset class="sync-by">
+    <legend class="label">Scroll alignment</legend>
+    <div class="segmented">
+      <label class="segment">
+        <input type="radio" name="sync-by" value="percent" checked
+               aria-describedby="sync-by-hint">
+        <span>Relative (%)</span>
+      </label>
+      <label class="segment">
+        <input type="radio" name="sync-by" value="pixel"
+               aria-describedby="sync-by-hint">
+        <span>Exact (px)</span>
+      </label>
+    </div>
+    <div class="dd-hint" id="sync-by-hint"></div>
+  </fieldset>
 
   <label class="checkbox-row">
     <input type="checkbox" id="open-new-window">

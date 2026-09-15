@@ -28,8 +28,8 @@ Because there is currently no dedicated `chrome.splitView` API to manipulate the
 
 The extension auto-detects which mode each tab requires:
 
-1. **`"window"`** — Standard pages where the viewport scrolls (`window.scrollY > 0`). Syncs via **proportional percentage**.
-2. **`"container"`** — SPAs (ChatGPT, Gemini) where an inner `<div>` scrolls while `window.scrollY` stays 0. Syncs via **proportional percentage** on the detected container.
+1. **`"window"`** — Standard pages where the viewport scrolls (`window.scrollY > 0`). Syncs by **scroll position** (percentage or pixel offset, see 4A).
+2. **`"container"`** — SPAs (ChatGPT, Gemini) where an inner `<div>` scrolls while `window.scrollY` stays 0. Syncs by **scroll position** on the detected container.
 3. **`"canvas"`** — Canvas-dominated apps (Figma, Miro, Excalidraw) where there is no DOM scrolling at all. Syncs via **wheel delta relay** — raw `deltaX`/`deltaY` values are forwarded and dispatched as synthetic `WheelEvent`s on the target canvas.
 
 ### Dual-World Communication (Canvas Mode)
@@ -54,19 +54,24 @@ MAIN world (content-main.js)     ISOLATED world (content.js)     Background
 
 The background stores each tab's scroll mode (`tabModes[tabId]`). This enables correct routing when tabs use different modes (e.g., Normal website ↔ Figma canvas):
 
-- **`SCROLL_UPDATE`** → Always forwarded as `DO_SCROLL` (percentage-based)
+- **`SCROLL_UPDATE`** → Always forwarded as `DO_SCROLL` (position-based)
 - **`WHEEL_RELAY`** → Forwarded as `DO_WHEEL` **only when at least one tab is in `"canvas"` mode**. This prevents double-scrolling when both tabs are normal pages (which already sync via percentage).
 
 ## 4. Core Requirements & Logic
 
-### A. Proportional Scrolling (Window & Container Modes)
+### A. Position Scrolling (Window & Container Modes)
 
-Pages might be different lengths. Do not sync absolute pixels. Sync the **percentage** of the scrollable area.
+Pages might be different lengths, so the user picks how positions map ("Scroll alignment" in the popup).
+The preference is stored in `chrome.storage.sync` under `syncBy`.
 
-- **Formula:** `scrollPercent = el.scrollTop / (el.scrollHeight - el.clientHeight)`
-- **Target Formula:** `targetY = percent * (el.scrollHeight - el.clientHeight)`
+- **`"percent"` (default):** sync the **percentage** of the scrollable area, so both pages reach the end together.
+  - **Formula:** `scrollPercent = el.scrollTop / (el.scrollHeight - el.clientHeight)`
+  - **Target Formula:** `targetY = percent * (el.scrollHeight - el.clientHeight)`
+- **`"pixel"`:** sync the exact **`scrollTop`**, clamped to `[0, maxScroll]`, so the shorter page stops at its end while the longer one keeps going.
 - For `"window"` mode, `el` is `document.scrollingElement || document.documentElement`
 - For `"container"` mode, `el` is the detected scrollable `<div>`
+- `SCROLL_UPDATE` always carries both `percent` and `top`; the **receiving** tab applies whichever matches its preference. Content scripts read `syncBy` on injection and follow `chrome.storage.onChanged`, so switching takes effect mid-sync with no background involvement.
+- Change-dedupe on send uses `MIN_DELTA` (percent) or `MIN_PX_DELTA` (pixel). After applying `DO_SCROLL`, the tab records where it landed as its last-sent position so a later user scroll back to that spot is not deduped away.
 
 ### B. Wheel Delta Relay (Canvas Mode)
 
@@ -106,7 +111,7 @@ Two-tier strategy — pre-emptive and runtime:
 
 ### F. Permissions
 
-Requires `"tabs"`, `"scripting"`, and `"activeTab"`. Host permissions: `"<all_urls>"` to allow injection on any standard webpage.
+Requires `"tabs"`, `"scripting"`, `"activeTab"`, and `"storage"` (scroll alignment preference; no install warning). Host permissions: `"<all_urls>"` to allow injection on any standard webpage.
 
 ## 5. Message Protocol
 
@@ -124,8 +129,8 @@ Requires `"tabs"`, `"scripting"`, and `"activeTab"`. Host permissions: `"<all_ur
 | Message Type | Direction | Data | Purpose |
 |---|---|---|---|
 | `SET_MODE` | content → background | `{ mode }` | Report tab's scroll mode |
-| `SCROLL_UPDATE` | content → background | `{ percent }` | Outgoing scroll position (0..1) |
-| `DO_SCROLL` | background → content | `{ percent }` | Apply scroll position |
+| `SCROLL_UPDATE` | content → background | `{ percent, top }` | Outgoing scroll position (0..1 and px) |
+| `DO_SCROLL` | background → content | `{ percent, top }` | Apply scroll position per `syncBy` |
 | `WHEEL_RELAY` | content → background | `{ deltaX, deltaY, deltaMode, ctrlKey, shiftKey }` | Forward wheel deltas |
 | `DO_WHEEL` | background → content | `{ deltaX, deltaY, deltaMode, ctrlKey, shiftKey }` | Apply wheel deltas |
 
@@ -177,7 +182,7 @@ Injection
 
 ## 7. Edge Cases to Handle
 
-- **Dynamic Page Loading:** Height changes from infinite scroll or lazy loading are handled because percentage is recalculated on every scroll event (not cached on load).
+- **Dynamic Page Loading:** Height changes from infinite scroll or lazy loading are handled because percentage and max scroll are recalculated on every scroll event (not cached on load).
 - **Missing Adjacent Tab:** Popup gracefully shows error in UI when no adjacent tab is found.
 - **SPA Navigation:** Container scroll mode checks `container.isConnected` on every scroll event. If the DOM node was removed (page navigation), re-runs `detectScrollMode()`.
 - **Canvas Re-detection:** `content-main.js` re-queries `findPrimaryCanvas()` if the cached canvas element becomes disconnected.
@@ -255,7 +260,7 @@ This is a **zero-build** Chrome Extension. No bundler, transpiler, or package ma
 - MAIN world cleanup: expose `window.__splitViewSyncMainCleanup`
 - Tab detection: 3-tier strategy — `splitViewId` → `highlighted` tabs → index ± 1 adjacency
 - Popup state restoration: query background via `GET_STATE` on popup open
-- **Never** use `chrome.storage` for transient sync state — keep it in service worker memory
+- **Never** use `chrome.storage` for transient sync state — keep it in service worker memory. User preferences (`syncBy`) belong in `chrome.storage.sync`
 - MAIN world injection: `chrome.scripting.executeScript` with `world: "MAIN"` and `injectImmediately: true`
 - Canvas URL patterns in `popup.js`: `figma.com`, `miro.com`, `excalidraw.com`
 - Canvas detection: never call `getContext()` — it fails on existing WebGL contexts

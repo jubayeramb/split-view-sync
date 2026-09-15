@@ -6,6 +6,11 @@
  * Chrome's Split View detection (splitViewId / highlighted / index ± 1),
  * but both selections are user-overridable via custom dropdowns.
  *
+ * "Scroll alignment" chooses how positions map between pages of different
+ * lengths: relative percentage (default) or exact pixel offset. Stored in
+ * chrome.storage.sync and read live by the content scripts, so it can be
+ * changed while syncing.
+ *
  * "Open in new window" moves the two selected tabs into a pair of
  * side-by-side windows positioned at the screen halves, then syncs —
  * for users who don't know about Chrome's native Split View.
@@ -36,6 +41,8 @@ const DOM = {
     left:  document.getElementById("dd-left-hint"),
     right: document.getElementById("dd-right-hint"),
   },
+  syncByRadios:  document.querySelectorAll('input[name="sync-by"]'),
+  syncByHint:    document.getElementById("sync-by-hint"),
   openNewWindow: document.getElementById("open-new-window"),
   btnSync:       document.getElementById("btn-sync"),
   status:        document.getElementById("status"),
@@ -56,6 +63,13 @@ const CANVAS_URL_PATTERNS = [
   /^https?:\/\/(www\.)?miro\.com\//,
   /^https?:\/\/(www\.)?excalidraw\.com/,
 ];
+
+const SYNC_BY_KEY = "syncBy";
+
+const SYNC_BY_HINTS = {
+  percent: "Pages of different lengths reach the end together.",
+  pixel: "Same scroll distance; the shorter page stops at its end.",
+};
 
 // URLs we can't inject into — filter them out of the dropdown.
 const SKIP_URL_RE = /^(chrome|chrome-extension|edge|about|view-source|devtools):|^https?:\/\/chromewebstore\.google\.com/;
@@ -366,6 +380,34 @@ function onDropdownKeydown(e, side) {
   }
 }
 
+// ── Scroll alignment preference ────────────────────────────────────────
+
+function renderSyncBy(value) {
+  const syncBy = value === "pixel" ? "pixel" : "percent";
+  for (const radio of DOM.syncByRadios) {
+    radio.checked = radio.value === syncBy;
+  }
+  DOM.syncByHint.textContent = SYNC_BY_HINTS[syncBy];
+}
+
+async function loadSyncBy() {
+  try {
+    const stored = await chrome.storage.sync.get(SYNC_BY_KEY);
+    renderSyncBy(stored[SYNC_BY_KEY]);
+  } catch (_) {
+    renderSyncBy("percent");
+  }
+}
+
+async function onSyncByChange(e) {
+  renderSyncBy(e.target.value);
+  try {
+    await chrome.storage.sync.set({ [SYNC_BY_KEY]: e.target.value });
+  } catch (err) {
+    console.warn("[Syncroll] Saving scroll alignment failed:", err);
+  }
+}
+
 // ── "Open in new window" — two side-by-side windows ────────────────────
 
 async function openInSideBySideWindows(leftTabId, rightTabId) {
@@ -395,6 +437,8 @@ async function openInSideBySideWindows(leftTabId, rightTabId) {
 // ── Init: restore state or detect panes ────────────────────────────────
 
 (async function init() {
+  loadSyncBy();
+
   // If background is already syncing, restore that UI directly.
   try {
     const state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
@@ -550,6 +594,12 @@ DOM.btnSync.addEventListener("click", async () => {
 
   setStatus("Synced — scroll either pane!", "success");
 });
+
+// ── Scroll alignment wiring ────────────────────────────────────────────
+
+for (const radio of DOM.syncByRadios) {
+  radio.addEventListener("change", onSyncByChange);
+}
 
 // ── Dropdown event wiring ──────────────────────────────────────────────
 
