@@ -200,6 +200,7 @@ chrome.runtime.onConnect.addListener((port) => {
         targetPort.postMessage({
           type: "DO_SCROLL",
           percent: msg.percent,
+          top: msg.top,
         });
       } else if (msg.type === "WHEEL_RELAY") {
         // Only forward wheel deltas when at least one tab is canvas.

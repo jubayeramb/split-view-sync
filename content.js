@@ -8,6 +8,12 @@
  *  2. "container" — SPAs (ChatGPT, Gemini) where an inner <div> scrolls
  *  3. "canvas"    — canvas-based apps (Figma) with no DOM scrolling
  *
+ * Scroll alignment (user preference, chrome.storage.sync "syncBy"):
+ *  • "percent" - same fraction of the scrollable area (default)
+ *  • "pixel"   - same scrollTop; the shorter page clamps at its end
+ *  Outgoing updates carry both values; the receiving tab applies the one
+ *  matching its current preference.
+ *
  * Performance architecture:
  *  • Persistent port (chrome.runtime.connect) instead of one-shot
  *    sendMessage — eliminates per-message connection overhead.
@@ -38,15 +44,19 @@
   const GRACE_MS = 80;              // Echo-prevention window (ms)
   const MIN_DELTA = 0.0005;         // ~0.05 % — ignore sub-pixel drift
   const CANVAS_COVERAGE = 0.5;      // >50 % viewport = canvas page
+  const MIN_PX_DELTA = 1;           // Pixel alignment: ignore sub-pixel drift
   const WHEEL_MIN_DELTA = 0.5;      // Ignore sub-pixel wheel noise
   const BRIDGE_SOURCE = "SyncScroller";  // postMessage namespace
+  const SYNC_BY_KEY = "syncBy";     // chrome.storage.sync preference key
 
   // ── State ────────────────────────────────────────────────────────────
   let lastProgrammaticScrollTime = 0;
   let lastSentPercent = -1;
+  let lastSentTop = -1;
   let sendRafId = null;
   let applyRafId = null;
-  let latestIncomingPercent = null;
+  let latestIncomingScroll = null; // { percent, top } from the other tab
+  let syncBy = "percent";          // "percent" | "pixel"
 
   let scrollMode = null;           // "window" | "container" | "canvas"
   let scrollContainer = null;      // Cached scrollable <div> element
@@ -79,6 +89,34 @@
     if (max <= 0) return 0;
     if (el) return el.scrollTop / max;
     return (window.scrollY || document.documentElement.scrollTop) / max;
+  }
+
+  /**
+   * Current scrollTop in pixels for an element (or the document root).
+   * @param {Element|null} el - scrollable element, or null for window
+   */
+  function getScrollTop(el) {
+    if (el) return el.scrollTop;
+    return window.scrollY || document.documentElement.scrollTop;
+  }
+
+  // ── Alignment preference ────────────────────────────────────────────
+
+  function normalizeSyncBy(value) {
+    return value === "pixel" ? "pixel" : "percent";
+  }
+
+  async function loadSyncBy() {
+    if (!isContextAlive()) return;
+    try {
+      const stored = await chrome.storage.sync.get(SYNC_BY_KEY);
+      syncBy = normalizeSyncBy(stored[SYNC_BY_KEY]);
+    } catch (_) {}
+  }
+
+  function onStorageChanged(changes, areaName) {
+    if (areaName !== "sync" || !changes[SYNC_BY_KEY]) return;
+    syncBy = normalizeSyncBy(changes[SYNC_BY_KEY].newValue);
   }
 
   // ── Scroll container detection ──────────────────────────────────────
@@ -266,14 +304,20 @@
       if (max <= 0) return;
 
       const percent = getScrollRatio(el);
+      const top = getScrollTop(el);
 
       // Skip if barely changed — prevents oscillation
-      if (Math.abs(percent - lastSentPercent) < MIN_DELTA) return;
+      if (syncBy === "pixel") {
+        if (Math.abs(top - lastSentTop) < MIN_PX_DELTA) return;
+      } else if (Math.abs(percent - lastSentPercent) < MIN_DELTA) {
+        return;
+      }
 
       lastSentPercent = percent;
+      lastSentTop = top;
 
       try {
-        port.postMessage({ type: "SCROLL_UPDATE", percent });
+        port.postMessage({ type: "SCROLL_UPDATE", percent, top });
       } catch (_) {
         teardown();
       }
@@ -358,22 +402,24 @@
   let latestIncomingWheel = null;
 
   port.onMessage.addListener((msg) => {
-    // ── Percentage-based scroll (window / container modes) ────────────
+    // ── Position-based scroll (window / container modes) ──────────────
     if (msg.type === "DO_SCROLL") {
-      latestIncomingPercent = msg.percent;
+      latestIncomingScroll = { percent: msg.percent, top: msg.top };
 
       if (!applyRafId) {
         applyRafId = requestAnimationFrame(() => {
           applyRafId = null;
-          if (latestIncomingPercent == null) return;
+          if (latestIncomingScroll == null) return;
 
           const el = scrollMode === "container" ? scrollContainer : null;
           const max = getMaxScroll(el);
-          if (max <= 0) { latestIncomingPercent = null; return; }
+          if (max <= 0) { latestIncomingScroll = null; return; }
 
-          const targetY = Math.max(0, Math.min(
-            max, latestIncomingPercent * max,
-          ));
+          const { percent, top } = latestIncomingScroll;
+          const desiredY = syncBy === "pixel" && top != null
+            ? top
+            : percent * max;
+          const targetY = Math.max(0, Math.min(max, desiredY));
 
           // Stamp BEFORE scrolling so the scroll listener ignores this
           lastProgrammaticScrollTime = Date.now();
@@ -384,7 +430,12 @@
             window.scrollTo({ top: targetY, behavior: "instant" });
           }
 
-          latestIncomingPercent = null;
+          // The other tab now matches where we landed. Without this, a
+          // user scroll back to the last position we sent is deduped away.
+          lastSentPercent = getScrollRatio(el);
+          lastSentTop = getScrollTop(el);
+
+          latestIncomingScroll = null;
         });
       }
       return;
@@ -437,6 +488,7 @@
     window.removeEventListener("scroll", onScroll);
     document.removeEventListener("wheel", onWheel, { capture: true });
     window.removeEventListener("message", onBridgeMessage);
+    try { chrome.storage.onChanged.removeListener(onStorageChanged); } catch (_) {}
 
     if (scrollContainer) {
       scrollContainer.removeEventListener("scroll", onScroll);
@@ -465,6 +517,8 @@
   // Expose for re-injection cycle (stop → start without page reload)
   window.__splitViewSyncCleanup = teardown;
 
-  // ── Init: detect scroll mode ────────────────────────────────────────
+  // ── Init: load alignment preference, detect scroll mode ─────────────
+  chrome.storage.onChanged.addListener(onStorageChanged);
+  loadSyncBy();
   detectScrollMode();
 })();
