@@ -27,9 +27,9 @@
   <meta property="og:image:height" content="720">
   <meta property="og:image:alt" content="Syncroll — Scroll two tabs together in Chrome's Split View">
   <meta property="og:locale" content="en_US">
-  <meta property="og:video" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
-  <meta property="og:video:url" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
-  <meta property="og:video:secure_url" content="https://www.youtube.com/watch?v=vv8RfyK7W4g">
+  <meta property="og:video" content="https://www.youtube.com/watch?v=u-SgQDwqzhw">
+  <meta property="og:video:url" content="https://www.youtube.com/watch?v=u-SgQDwqzhw">
+  <meta property="og:video:secure_url" content="https://www.youtube.com/watch?v=u-SgQDwqzhw">
   <meta property="og:video:type" content="text/html">
   <meta property="og:video:width" content="1280">
   <meta property="og:video:height" content="720">
@@ -40,7 +40,7 @@
   <meta name="twitter:description" content="Pick any two open tabs and scroll them together — Chrome Split View or two side-by-side windows. Works on websites, ChatGPT, Figma, and more.">
   <meta name="twitter:image" content="https://syncroll.jubayeramb.com/video-poster.jpeg">
   <meta name="twitter:image:alt" content="Syncroll — Scroll two tabs together in Chrome's Split View">
-  <meta name="twitter:player" content="https://www.youtube.com/embed/vv8RfyK7W4g">
+  <meta name="twitter:player" content="https://www.youtube.com/embed/u-SgQDwqzhw">
   <meta name="twitter:player:width" content="1280">
   <meta name="twitter:player:height" content="720">
 
@@ -60,7 +60,7 @@
         "url": "https://syncroll.jubayeramb.com/",
         "installUrl": "https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi",
         "image": "https://syncroll.jubayeramb.com/video-poster.jpeg",
-        "softwareVersion": "1.1.0",
+        "softwareVersion": "1.2.0",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -83,10 +83,10 @@
         "name": "Syncroll demo — Scroll two tabs together in Chrome's Split View",
         "description": "30-second walkthrough showing Syncroll syncing scroll position across two Chrome Split View panes — for websites, ChatGPT conversations, and Figma canvases.",
         "thumbnailUrl": "https://syncroll.jubayeramb.com/video-poster.jpeg",
-        "uploadDate": "2026-05-08",
+        "uploadDate": "2026-09-16",
         "duration": "PT30S",
-        "contentUrl": "https://www.youtube.com/watch?v=vv8RfyK7W4g",
-        "embedUrl": "https://www.youtube-nocookie.com/embed/vv8RfyK7W4g"
+        "contentUrl": "https://www.youtube.com/watch?v=u-SgQDwqzhw",
+        "embedUrl": "https://www.youtube-nocookie.com/embed/u-SgQDwqzhw"
       }
     ]
   }
@@ -472,6 +472,10 @@
           <p>Cross-window dropdowns list every open page with its favicon. Choose the left and right pane from anywhere — no dragging tabs around to set things up first.</p>
         </div>
         <div class="why-card">
+          <h3>Percent or pixel alignment</h3>
+          <p>Choose how two pages line up: relative, so both reach the end together, or exact pixels, so they scroll the same distance and the shorter page stops at its end. Switch any time, even mid-sync.</p>
+        </div>
+        <div class="why-card">
           <h3>Canvas-app pan sync</h3>
           <p>Wheel events relayed across panes so Figma, Miro, and Excalidraw canvases pan together in lock-step. A capability built right into Syncroll from day one.</p>
         </div>
@@ -506,7 +510,7 @@
           <img src="feature-websites.jpeg" alt="Two browser windows showing articles scrolled to the same position" width="1280" height="800" loading="lazy" decoding="async">
           <div class="feature-body">
             <h3>Standard websites</h3>
-            <p>Wikipedia, MDN, news sites. Proportional sync keeps pages of different lengths aligned.</p>
+            <p>Wikipedia, MDN, news sites. Proportional sync keeps pages of different lengths aligned, or switch to exact-pixel alignment when you want both sides to travel the same distance.</p>
           </div>
         </div>
         <div class="feature">
@@ -532,6 +536,7 @@
         <li>Install Syncroll from the <a href="https://chromewebstore.google.com/detail/syncroll-split-view-sync/ghpgfihdllhgmjkgkjnkmoonelfokpdi" target="_blank" rel="noopener"><strong>Chrome Web Store</strong></a>.</li>
         <li>Click the Syncroll icon and pick the <strong>left</strong> and <strong>right</strong> tab from the dropdowns. Any tab in any window works.</li>
         <li>Already in Chrome's native Split View? Both panes are detected automatically. Or tick <strong>Open in new window</strong> to have Syncroll arrange two side-by-side windows for you.</li>
+        <li>Pick a <strong>Scroll alignment</strong>: <strong>Relative (%)</strong> so both pages reach the end together, or <strong>Exact (px)</strong> so both travel the same distance. Your choice is remembered.</li>
         <li>Hit <strong>Sync Split Panes</strong>. Scroll either side; the other follows.</li>
       </ol>
     </section>
@@ -565,7 +570,7 @@
       if (!btn || !frame) return;
       btn.addEventListener("click", function () {
         var iframe = document.createElement("iframe");
-        iframe.src = "https://www.youtube-nocookie.com/embed/vv8RfyK7W4g?autoplay=1&rel=0&modestbranding=1";
+        iframe.src = "https://www.youtube-nocookie.com/embed/u-SgQDwqzhw?autoplay=1&rel=0&modestbranding=1";
         iframe.title = "Syncroll demo";
         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         iframe.allowFullscreen = true;
