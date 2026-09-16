@@ -1,5 +1,57 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="64" cy="64" r="64" fill="#8B68FF"/>
-<path d="M43.5 24C43.5 21.5147 41.4853 19.5 39 19.5C36.5147 19.5 34.5 21.5147 34.5 24H39H43.5ZM35.818 107.182C37.5754 108.939 40.4246 108.939 42.182 107.182L70.8198 78.5442C72.5772 76.7868 72.5772 73.9376 70.8198 72.1802C69.0624 70.4228 66.2132 70.4228 64.4558 72.1802L39 97.636L13.5442 72.1802C11.7868 70.4228 8.93755 70.4228 7.18019 72.1802C5.42284 73.9376 5.42284 76.7868 7.18019 78.5442L35.818 107.182ZM39 24H34.5V64H39H43.5V24H39ZM39 64H34.5L34.5 104H39H43.5L43.5 64H39Z" fill="white"/>
-<path d="M84.5 104C84.5 106.485 86.5147 108.5 89 108.5C91.4853 108.5 93.5 106.485 93.5 104H89H84.5ZM92.182 20.818C90.4246 19.0607 87.5754 19.0607 85.818 20.818L57.1802 49.4558C55.4228 51.2132 55.4228 54.0624 57.1802 55.8198C58.9376 57.5772 61.7868 57.5772 63.5442 55.8198L89 30.364L114.456 55.8198C116.213 57.5772 119.062 57.5772 120.82 55.8198C122.577 54.0624 122.577 51.2132 120.82 49.4558L92.182 20.818ZM89 104H93.5L93.5 24H89H84.5L84.5 104H89Z" fill="white"/>
+  <defs>
+    <linearGradient id="sr-tile" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#8E6BFF"/>
+      <stop offset="0.55" stop-color="#6A3FF0"/>
+      <stop offset="1" stop-color="#3E1FB0"/>
+    </linearGradient>
+    <linearGradient id="sr-face" x1="0.1" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.62" stop-color="#F3EEFF"/>
+      <stop offset="1" stop-color="#CBB8FF"/>
+    </linearGradient>
+    <linearGradient id="sr-side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7E5BE8"/>
+      <stop offset="1" stop-color="#4A27B8"/>
+    </linearGradient>
+    <linearGradient id="sr-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.16"/>
+    </linearGradient>
+    <filter id="sr-drop" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#1B0553" flood-opacity="0.55"/>
+    </filter>
+    <clipPath id="sr-clip">
+      <rect x="2" y="2" width="124" height="124" rx="34"/>
+    </clipPath>
+  </defs>
+
+  <!-- Tile -->
+  <rect x="2" y="2" width="124" height="124" rx="34" fill="url(#sr-tile)"/>
+  <g clip-path="url(#sr-clip)">
+    <ellipse cx="44" cy="16" rx="64" ry="34" fill="#ffffff" opacity="0.14"/>
+  </g>
+  <rect x="3.5" y="3.5" width="121" height="121" rx="32.5" fill="none"
+        stroke="url(#sr-rim)" stroke-width="3"/>
+
+  <!-- Sync arrows: down (left) and up (right), extruded -->
+  <g filter="url(#sr-drop)">
+    <g transform="translate(40,64) rotate(180) skewX(-6)">
+      <path d="M0,-33 L19,-12 L6,-12 L6,33 L-6,33 L-6,-12 L-19,-12 Z"
+            transform="translate(-4,-5)" fill="url(#sr-side)" stroke="url(#sr-side)"
+            stroke-width="9" stroke-linejoin="round"/>
+      <path d="M0,-33 L19,-12 L6,-12 L6,33 L-6,33 L-6,-12 L-19,-12 Z"
+            fill="url(#sr-face)" stroke="url(#sr-face)"
+            stroke-width="9" stroke-linejoin="round"/>
+    </g>
+    <g transform="translate(88,64) skewX(-6)">
+      <path d="M0,-33 L19,-12 L6,-12 L6,33 L-6,33 L-6,-12 L-19,-12 Z"
+            transform="translate(4,5)" fill="url(#sr-side)" stroke="url(#sr-side)"
+            stroke-width="9" stroke-linejoin="round"/>
+      <path d="M0,-33 L19,-12 L6,-12 L6,33 L-6,33 L-6,-12 L-19,-12 Z"
+            fill="url(#sr-face)" stroke="url(#sr-face)"
+            stroke-width="9" stroke-linejoin="round"/>
+    </g>
+  </g>
 </svg>
